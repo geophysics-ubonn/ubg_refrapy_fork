@@ -17,6 +17,9 @@ from numpy import array, where, polyfit, isclose
 from Pmw import initialise, Balloon
 import warnings
 
+from tqdm import tqdm
+
+
 warnings.filterwarnings('ignore')
 
 class Refrapick(Tk):
@@ -25,14 +28,14 @@ class Refrapick(Tk):
         
         super().__init__()
         self.geometry("1600x900")
-        self.title('Refrapy - Refrapick v2.0.0')
+        self.title('Refrapy - Refrapick v2.0.0 - SP fork')
         self.configure(bg = "#F0F0F0")
         self.resizable(0,0)
 
         frame_toolbar = Frame(self)
         frame_toolbar.grid(row=0,column=0,sticky="WE")
         
-        self.iconbitmap("%s/images/ico_refrapy.ico"%getcwd())
+        # self.iconbitmap("%s/images/ico_refrapy.ico"%getcwd())
         photo = PhotoImage(file="%s/images/ico_refrapy.gif"%getcwd())
         labelPhoto = Label(frame_toolbar, image = photo, width = 151)
         labelPhoto.image = photo
@@ -241,6 +244,7 @@ class Refrapick(Tk):
         self.frames = []
         self.figs = []
         self.axs = []
+        self.axins = []
         self.sts = []
         self.xpicks = []
         self.tpicks = []
@@ -248,17 +252,22 @@ class Refrapick(Tk):
         self.dxs = []
         self.x1s = []
         self.xends = []
+        self.xalls = []
+        self.delay = 0
         self.tracesArts = []
+        self.tracesArtsIn = []
         self.fillArts = []
+        self.fillArtsIn = []
+        self.gain = 1
         self.gains = []
-        self.gainFactor = 3
+        self.gainFactor = 2
         self.tracesMaxs = []
         self.tracesData = []
         self.nchannels = []
         self.tracesTime = []
         self.currentSt = 0
-        self.fillSide = []
-        self.amplitudeClip = []
+        self.fillSide = 1
+        self.amplitudeClip = 0
         self.invertedTimeAxis = []
         self.samplingRates = []
         self.originalSamplingRates = []
@@ -268,6 +277,7 @@ class Refrapick(Tk):
         self.filters = []
         self.receiverPositions = []
         self.picksArts = []
+        self.picksArtsIn = []
         self.ttArts = []
         self.projReady = False
         self.pickMode = False
@@ -275,6 +285,7 @@ class Refrapick(Tk):
         self.pickConnections = []
         self.velConnections = []
         self.pickLineArts = []
+        self.maxTime = []
         self.traceColor = "k"
         self.fillColor = "k"
         self.backgroundColor = "white"
@@ -282,12 +293,13 @@ class Refrapick(Tk):
         self.gridColor = "k"
         self.gridStyle = "-"
         self.pickColor = "r"
-        self.pickMarker = "_"
+        self.pickMarker = "+"
         self.pickLineColor = "r"
         self.pickLineStyle = "--"
         self.traveltimesColor = "g"
         self.traveltimesStyle = "--"
         self.pickSize = 100
+        self.updatePlots = []
 
     def kill(self):
 
@@ -304,11 +316,15 @@ class Refrapick(Tk):
                 self.currentSt += 1
                 
                 if len(self.ttArts) > 0:
-                    
+
                     self.allPicks()
-                    self.figs[self.currentSt].canvas.draw()
-                    self.allPicks()
-            
+                    self.figs[self.currentSt].canvas.draw_idle()
+                    self.allPicks() 
+
+                self.yLimSet()
+                self.setGain()
+
+
         self.frames[self.currentSt].tkraise()
         self.statusLabel.lift()
 
@@ -321,11 +337,14 @@ class Refrapick(Tk):
                 self.currentSt -= 1
 
                 if len(self.ttArts) > 0:
-                    
+
                     self.allPicks()
-                    self.figs[self.currentSt].canvas.draw()
+                    self.figs[self.currentSt].canvas.draw_idle()
                     self.allPicks()
-            
+
+                self.yLimSet()
+                self.setGain()
+
         self.frames[self.currentSt].tkraise()
         self.statusLabel.lift()    
     
@@ -341,6 +360,19 @@ class Refrapick(Tk):
                 messagebox.showinfo(title="Refrapick", message="All cleared successfully!")
 
     def plotOptions(self):
+
+        def editMaxTime():
+        
+            new_max_time = simpledialog.askstring("Refrapick","Enter the new maximum time (in s):")
+
+            if new_max_time:
+
+                self.maxTime = float(new_max_time)
+                
+                self.yLimSet()
+
+                messagebox.showinfo(title="Refrapick", message="The maximum time has been changed")
+                plotOptionsWindow.tkraise()
 
         def editTraceColor():
         
@@ -358,7 +390,7 @@ class Refrapick(Tk):
 
                             trArt.set_color(self.traceColor)
 
-                        self.figs[i].canvas.draw()
+                        self.figs[i].canvas.draw_idle()
 
                 messagebox.showinfo(title="Refrapick", message="The trace color has been changed")
                 plotOptionsWindow.tkraise()
@@ -377,8 +409,8 @@ class Refrapick(Tk):
 
                     for i in range(len(self.sts)):
 
-                        if self.fillSide[i] == 1: self.wigglesOnly(); self.fillPositive()
-                        elif self.fillSide[i] == -1: self.wigglesOnly(); self.fillNegative()
+                        if self.fillSide == 1: self.wigglesOnly(); self.fillPositive()
+                        elif self.fillSide == -1: self.wigglesOnly(); self.fillNegative()
 
                 messagebox.showinfo(title="Refrapick", message="The fill color has been changed")
                 plotOptionsWindow.tkraise()
@@ -398,7 +430,7 @@ class Refrapick(Tk):
                     for i in range(len(self.sts)):
 
                         self.axs[i].set_facecolor(self.backgroundColor)
-                        self.figs[i].canvas.draw()
+                        self.figs[i].canvas.draw_idle()
 
                 messagebox.showinfo(title="Refrapick", message="The plot background color has been changed")
                 plotOptionsWindow.tkraise()
@@ -418,7 +450,7 @@ class Refrapick(Tk):
                         for i in range(len(self.sts)):
 
                             self.axs[i].grid(False)
-                            self.figs[i].canvas.draw()
+                            self.figs[i].canvas.draw_idle()
 
                         messagebox.showinfo(title="Refrapick", message="The grid lines have been disabled")
 
@@ -433,7 +465,7 @@ class Refrapick(Tk):
                         for i in range(len(self.sts)):
 
                             self.axs[i].grid(lw = .5, alpha = .5, c = self.gridColor, ls = self.gridStyle)
-                            self.figs[i].canvas.draw()
+                            self.figs[i].canvas.draw_idle()
 
                         messagebox.showinfo(title="Refrapick", message="The grid lines have been enabled")
 
@@ -454,7 +486,7 @@ class Refrapick(Tk):
                         for i in range(len(self.sts)):
 
                             self.axs[i].grid(lw = .5, alpha = .5, c = self.gridColor, ls = self.gridStyle)
-                            self.figs[i].canvas.draw()
+                            self.figs[i].canvas.draw_idle()
 
                 messagebox.showinfo(title="Refrapick", message="The grid line style has been changed")
                 plotOptionsWindow.tkraise()
@@ -476,7 +508,7 @@ class Refrapick(Tk):
                         for i in range(len(self.sts)):
 
                             self.axs[i].grid(lw = .5, alpha = .5, c = self.gridColor, ls = self.gridStyle)
-                            self.figs[i].canvas.draw()
+                            self.figs[i].canvas.draw_idle()
 
                 messagebox.showinfo(title="Refrapick", message="The grid line color color has been changed")
                 plotOptionsWindow.tkraise()
@@ -498,8 +530,9 @@ class Refrapick(Tk):
                         if self.xpicks[i]:
 
                             for pickArt in self.picksArts[i]: pickArt.set_color(self.pickColor)
+                            for pickArtIn in self.picksArtsIn[i]: pickArtIn.set_color(self.pickColor)
                             
-                        self.figs[i].canvas.draw()
+                        self.figs[i].canvas.draw_idle()
 
                 messagebox.showinfo(title="Refrapick", message="The pick marker color has been changed")
                 plotOptionsWindow.tkraise()
@@ -528,12 +561,17 @@ class Refrapick(Tk):
                                 for pickArt in self.picksArts[i]: pickArt.remove()
                                 del self.picksArts[i][:]
 
+                                for pickArtIn in self.picksArtsIn[i]: pickArtIn.remove()
+                                del self.picksArtsIn[i][:]
+
                                 for j,x in enumerate(self.xpicks[i]):
 
                                     pickline = self.axs[i].scatter(x, self.tpicks[i][j], marker = self.pickMarker, s = self.pickSize*self.dxs[i], color=self.pickColor)
-                                    self.picksArts[i].append(pickline)                                 
+                                    pickline_inset = self.axins[i].scatter(x, self.tpicks[i][j], marker = self.pickMarker, s = self.pickSize*self.dxs[i], color=self.pickColor)
+                                    self.picksArts[i].append(pickline)   
+                                    self.picksArtsIn[i].append(pickline_inset)                               
 
-                                self.figs[i].canvas.draw()
+                                self.figs[i].canvas.draw_idle()
                                 
                     messagebox.showinfo(title="Refrapick", message="The pick marker style has been changed")
                     plotOptionsWindow.tkraise()
@@ -555,7 +593,7 @@ class Refrapick(Tk):
                         if self.pickLineArts[i]:
 
                             self.pickLineArts[i].set_color(self.pickLineColor)
-                            self.figs[i].canvas.draw()
+                            self.figs[i].canvas.draw_idle()
 
                 messagebox.showinfo(title="Refrapick", message="The pick line color has been changed")
                 plotOptionsWindow.tkraise()
@@ -579,7 +617,7 @@ class Refrapick(Tk):
                             self.drawPicksLine()
                             self.pickLineArts[i] = False
                             self.drawPicksLine()
-                            self.figs[i].canvas.draw()
+                            self.figs[i].canvas.draw_idle()
 
                 messagebox.showinfo(title="Refrapick", message="The pick line style has been changed")
                 plotOptionsWindow.tkraise()
@@ -601,7 +639,7 @@ class Refrapick(Tk):
                         if self.ttArts[i]:
 
                             self.ttArts[i].set_color(self.traveltimesColor)
-                            self.figs[i].canvas.draw()
+                            self.figs[i].canvas.draw_idle()
 
                 messagebox.showinfo(title="Refrapick", message="The traveltimes line color has been changed")
                 plotOptionsWindow.tkraise()
@@ -623,7 +661,7 @@ class Refrapick(Tk):
                         if self.ttArts[i]:
                     
                             self.allPicks()
-                            self.figs[i].canvas.draw()
+                            self.figs[i].canvas.draw_idle()
                             self.allPicks()
 
                 messagebox.showinfo(title="Refrapick", message="The traveltimes line style has been changed")
@@ -631,13 +669,13 @@ class Refrapick(Tk):
 
             else: messagebox.showerror(title="Refrapick", message="Invalid line style!"); plotOptionsWindow.tkraise()
 
-        def editrGainFactor():
+        def editGainFactor():
         
-            new_gainFactor = simpledialog.askfloat("Refrapick","Enter the new gain factor (default is 3):")
+            new_gainFactor = simpledialog.askfloat("Refrapick","Enter the new gain factor (default is 2):")
 
             if new_gainFactor:
 
-                self.gainFacotr = new_gainFactor
+                self.gainFactor = new_gainFactor
                 messagebox.showinfo(title="Refrapick", message="The gain factor has been changed")        
         
         plotOptionsWindow = Toplevel(self)
@@ -645,23 +683,27 @@ class Refrapick(Tk):
         plotOptionsWindow.configure(bg = "#F0F0F0")
         plotOptionsWindow.geometry("350x520")
         plotOptionsWindow.resizable(0,0)
-        plotOptionsWindow.iconbitmap("%s/images/ico_refrapy.ico"%getcwd())
+        # plotOptionsWindow.iconbitmap("%s/images/ico_refrapy.ico"%getcwd())
         Label(plotOptionsWindow, text = "Plot options",font=("Arial", 11)).grid(row=0,column=0,sticky="EW",pady=5,padx=65)
-        Button(plotOptionsWindow,text="Change trace color", command = editTraceColor, width = 30).grid(row = 1, column = 0,pady=5,padx=65)
-        Button(plotOptionsWindow,text="Change fill color", command = editFillColor, width = 30).grid(row = 2, column = 0,pady=5,padx=65)
-        Button(plotOptionsWindow,text="Change background color", command = editBackgroundColor, width = 30).grid(row = 3, column = 0,pady=5,padx=65)
-        Button(plotOptionsWindow,text="Enable/disable grid lines", command = gridOnOff, width = 30).grid(row = 4, column = 0,pady=5,padx=65)
-        Button(plotOptionsWindow,text="Change grid lines style", command = editGridStyle, width = 30).grid(row = 5, column = 0,pady=5,padx=65)
-        Button(plotOptionsWindow,text="Change grid lines color", command = editGridColor, width = 30).grid(row = 6, column = 0,pady=5,padx=65)
-        Button(plotOptionsWindow,text="Change pick color", command = editPickColor, width = 30).grid(row = 7, column = 0,pady=5,padx=65)
-        Button(plotOptionsWindow,text="Change pick marker", command = editPickMarker, width = 30).grid(row = 8, column = 0,pady=5,padx=65)
-        Button(plotOptionsWindow,text="Change pick line color", command = editPickLineColor, width = 30).grid(row = 9, column = 0,pady=5,padx=65)
-        Button(plotOptionsWindow,text="Change pick line style", command = editPickLineStyle, width = 30).grid(row = 10, column = 0,pady=5,padx=65)
-        Button(plotOptionsWindow,text="Change traveltimes line color", command = editTraveltimeLineColor, width = 30).grid(row = 11, column = 0,pady=5,padx=65)
-        Button(plotOptionsWindow,text="Change traveltimes line style", command = editTraveltimeLineStyle, width = 30).grid(row = 12, column = 0,pady=5,padx=65)
-        Button(plotOptionsWindow,text="Change scale gain factor", command = editrGainFactor, width = 30).grid(row = 13, column = 0,pady=5,padx=65)
+        Button(plotOptionsWindow,text="Change maximum time", command = editMaxTime, width = 30).grid(row = 1, column = 0,pady=5,padx=65)
+        Button(plotOptionsWindow,text="Change trace color", command = editTraceColor, width = 30).grid(row = 2, column = 0,pady=5,padx=65)
+        Button(plotOptionsWindow,text="Change fill color", command = editFillColor, width = 30).grid(row = 3, column = 0,pady=5,padx=65)
+        Button(plotOptionsWindow,text="Change background color", command = editBackgroundColor, width = 30).grid(row = 4, column = 0,pady=5,padx=65)
+        Button(plotOptionsWindow,text="Enable/disable grid lines", command = gridOnOff, width = 30).grid(row = 5, column = 0,pady=5,padx=65)
+        Button(plotOptionsWindow,text="Change grid lines style", command = editGridStyle, width = 30).grid(row = 6, column = 0,pady=5,padx=65)
+        Button(plotOptionsWindow,text="Change grid lines color", command = editGridColor, width = 30).grid(row = 7, column = 0,pady=5,padx=65)
+        Button(plotOptionsWindow,text="Change pick color", command = editPickColor, width = 30).grid(row = 8, column = 0,pady=5,padx=65)
+        Button(plotOptionsWindow,text="Change pick marker", command = editPickMarker, width = 30).grid(row = 9, column = 0,pady=5,padx=65)
+        Button(plotOptionsWindow,text="Change pick line color", command = editPickLineColor, width = 30).grid(row = 10, column = 0,pady=5,padx=65)
+        Button(plotOptionsWindow,text="Change pick line style", command = editPickLineStyle, width = 30).grid(row = 11, column = 0,pady=5,padx=65)
+        Button(plotOptionsWindow,text="Change traveltimes line color", command = editTraveltimeLineColor, width = 30).grid(row = 12, column = 0,pady=5,padx=65)
+        Button(plotOptionsWindow,text="Change traveltimes line style", command = editTraveltimeLineStyle, width = 30).grid(row = 13, column = 0,pady=5,padx=65)
+        Button(plotOptionsWindow,text="Change scale gain factor", command = editGainFactor, width = 30).grid(row = 14, column = 0,pady=5,padx=65)
         
         plotOptionsWindow.tkraise()
+
+        self.updatePlots = [True for _ in self.updatePlots]
+        
     
     def options(self):
 
@@ -686,15 +728,17 @@ class Refrapick(Tk):
                         for i in range(len(self.tracesArts[self.currentSt])):
 
                             a = self.tracesData[self.currentSt][i]
-                            self.tracesArts[self.currentSt][i].set_xdata(a/max(a)*self.gains[self.currentSt]+self.x1s[self.currentSt]+self.dxs[self.currentSt]*i)
+                            self.tracesArts[self.currentSt][i].set_xdata(a/max(a)*self.gains[self.currentSt]+self.xalls[self.currentSt][i])
+                            self.tracesArtsIn[self.currentSt][i].set_xdata(a/max(a)*self.gains[self.currentSt]+self.xalls[self.currentSt][i])
 
                         self.axs[self.currentSt].set_xlim(self.x1s[self.currentSt]-self.dxs[self.currentSt]/2, self.xends[self.currentSt]+self.dxs[self.currentSt]/2)
+
                         self.updatePlotTitle()
                         
-                        if self.fillSide[self.currentSt] == 1: self.fillPositive()
-                        elif self.fillSide[self.currentSt] == -1: self.fillNegative()
+                        if self.fillSide == 0: self.wigglesOnly()
+                        elif self.fillSide == -1: self.fillNegative()
 
-                        if self.amplitudeClip[self.currentSt] == 1: self.amplitudeClip[self.currentSt] = 0; self.clipAmplitudes()
+                        self.clipAmplitudes()
                     
                         messagebox.showinfo(title="Refrapick", message="The receiver spacing was updated in %s"%self.stNames[self.currentSt])
                         optionsWindow.tkraise()
@@ -716,17 +760,18 @@ class Refrapick(Tk):
                     for i in range(len(self.tracesArts[self.currentSt])):
 
                         a = self.tracesData[self.currentSt][i]
-                        self.tracesArts[self.currentSt][i].set_xdata(a/max(a)*self.gains[self.currentSt]+self.x1s[self.currentSt]+self.dxs[self.currentSt]*i)
+                        self.tracesArts[self.currentSt][i].set_xdata(a/max(a)*self.gains[self.currentSt]+self.xalls[self.currentSt][i])
+                        self.tracesArtsIn[self.currentSt][i].set_xdata(a/max(a)*self.gains[self.currentSt]+self.xalls[self.currentSt][i])
 
                     self.axs[self.currentSt].set_xlim(self.x1s[self.currentSt]-self.dxs[self.currentSt]/2, self.xends[self.currentSt]+self.dxs[self.currentSt]/2)
                     
-                    if self.fillSide[self.currentSt] == 1: self.fillPositive()
-                    elif self.fillSide[self.currentSt] == -1: self.fillNegative()
+                    if self.fillSide == 0: self.wigglesOnly()
+                    elif self.fillSide == -1: self.fillNegative()
 
-                    if self.amplitudeClip[self.currentSt] == 1: self.amplitudeClip[self.currentSt] = 0; self.clipAmplitudes()
+                    self.clipAmplitudes()
 
                     self.axs[self.currentSt].set_xlim(self.x1s[self.currentSt]-self.dxs[self.currentSt]/2, self.xends[self.currentSt]+self.dxs[self.currentSt]/2)
-                    self.figs[self.currentSt].canvas.draw()
+                    self.figs[self.currentSt].canvas.draw_idle()
                     messagebox.showinfo(title="Refrapick", message="The position of the first receiver was updated in %s"%self.stNames[self.currentSt])
                     optionsWindow.tkraise()
 
@@ -746,7 +791,7 @@ class Refrapick(Tk):
             optionsWindow.configure(bg = "#F0F0F0")
             optionsWindow.geometry("350x170")
             optionsWindow.resizable(0,0)
-            optionsWindow.iconbitmap("%s/images/ico_refrapy.ico"%getcwd())
+            # optionsWindow.iconbitmap("%s/images/ico_refrapy.ico"%getcwd())
             Label(optionsWindow, text = "Editing parameters in %s"%self.stNames[self.currentSt],font=("Arial", 11)).grid(row=0,column=0,sticky="EW",pady=5,padx=65)
             Button(optionsWindow,text="Edit receiver spacing", command = editdx, width = 30).grid(row = 1, column = 0,pady=5,padx=65)
             Button(optionsWindow,text="Edit first receiver position", command = editx1, width = 30).grid(row = 2, column = 0,pady=5,padx=65)
@@ -766,6 +811,7 @@ class Refrapick(Tk):
                     for j in range(len(self.tracesArts[self.currentSt])):
 
                         self.tracesArts[i][j].set_ydata(self.tracesTime[i][j]+delay)
+                        self.tracesArtsIn[i][j].set_ydata(self.tracesTime[i][j]+delay)
                         self.tracesTime[i][j]+=delay
 
                     if self.invertedTimeAxis[i] == 0: self.axs[i].set_ylim(min(self.tracesTime[i][0]), max(self.tracesTime[i][0]))
@@ -774,12 +820,12 @@ class Refrapick(Tk):
                         self.axs[i].set_ylim(min(self.tracesTime[i][0]), max(self.tracesTime[i][0]))
                         self.axs[i].invert_yaxis()
                         
-                    self.figs[i].canvas.draw()
+                    self.figs[i].canvas.draw_idle()
                     
-                    if self.fillSide[i] == 1: self.fillPositive()
-                    elif self.fillSide[i] == -1: self.fillNegative()
+                    if self.fillSide == 0: self.wigglesOnly()
+                    elif self.fillSide == -1: self.fillNegative()
 
-                    if self.amplitudeClip[i] == 1: self.amplitudeClip[i] = 0; self.clipAmplitudes()
+                    self.clipAmplitudes()
 
                 messagebox.showinfo(title="Refrapick", message="Shot time has been corrected for all opened waveforms!")
     
@@ -805,7 +851,7 @@ class Refrapick(Tk):
                 self.p_gps = local+"gps/"
                 self.projPath = local
                 self.projReady = True
-                messagebox.showinfo(title="Refrapick", message="Successfully created the project!")
+                print("Refrapick: Successfully created the project!")
                 self.statusLabel.configure(text="Project path ready!",font=("Arial", 11))
                 
             else:
@@ -828,7 +874,7 @@ class Refrapick(Tk):
                 self.p_models = self.projPath+"/"+"models/"
                 self.p_gps = self.projPath+"/"+"gps/"
                 self.projReady = True
-                messagebox.showinfo(title="Refrapick", message="Successfully loaded the project path!")
+                print("Refrapick: Successfully loaded the project path!")
                 self.statusLabel.configure(text="Project path ready!",font=("Arial", 11))
                 
             else: messagebox.showerror(title="Refrapick", message="Not all folders were detected!\nPlease, check the structure of the selected project.")
@@ -840,16 +886,17 @@ class Refrapick(Tk):
             if self.pickMode: self.pick()
             if self.velMode: self.appVelMode()
             
-            files = filedialog.askopenfilenames(title='Open', initialdir = self.projPath+"/data/", filetypes=[('SEG2 file', '*.dat'),
-                                                                                                            ('SEGY file', '*.sgy'),
-                                                                                                            ('SU file', '*.su')])
+            files = filedialog.askopenfilenames(title='Open', initialdir = self.projPath+"/data/", filetypes=[('SU file', '*.su'),
+                                                                                                              ('SEG2 file', '*.dat'),
+                                                                                                            ('SEGY file', '*.sgy')
+                                                                                                            ])
 
             if files:
 
                 if self.sts: n = len(self.sts)
                 else: n = 0
                 
-                for i, file in enumerate(files):
+                for i, file in tqdm(enumerate(files), total=len(files), desc="Reading files"):
 
                     st = read(file)
 
@@ -860,6 +907,31 @@ class Refrapick(Tk):
                         source = float(st[0].stats.seg2['SOURCE_LOCATION'])
                         x1 = float(st[0].stats.seg2['RECEIVER_LOCATION'])
                         xend = float(st[-1].stats.seg2['RECEIVER_LOCATION'])
+                        xall = []
+                        for trace in st:
+                            xall.append(float(trace.stats.seg2['RECEIVER_LOCATION']))
+                        
+                    elif st[0].stats._format == "SU":
+                        xsca = abs(float(st[0].stats.su['trace_header']['scalar_to_be_applied_to_all_coordinates']))
+                        dx = (float(st[1].stats.su['trace_header']['group_coordinate_x'])-float(st[0].stats.su['trace_header']['group_coordinate_x']))/xsca
+                        delay = float(st[0].stats.su['trace_header']['delay_recording_time']/1000)
+                        source = float(st[0].stats.su['trace_header']['source_coordinate_x'])/xsca
+                        x1 = float(st[0].stats.su['trace_header']['group_coordinate_x'])/xsca
+                        xend = float(st[-1].stats.su['trace_header']['group_coordinate_x'])/xsca
+                        xall = []
+                        for trace in st:
+                            xall.append(float(trace.stats.su['trace_header']['group_coordinate_x'])/xsca)
+
+                    elif st[0].stats._format == "SEGY":
+                        xsca = abs(float(st[0].stats.segy['trace_header']['scalar_to_be_applied_to_all_coordinates']))
+                        dx = (float(st[1].stats.segy['trace_header']['group_coordinate_x'])-float(st[0].stats.segy['trace_header']['group_coordinate_x']))/xsca
+                        delay = float(st[0].stats.segy['trace_header']['delay_recording_time']/1000)
+                        source = float(st[0].stats.segy['trace_header']['source_coordinate_x'])/xsca
+                        x1 = float(st[0].stats.segy['trace_header']['group_coordinate_x'])/xsca
+                        xend = float(st[-1].stats.segy['trace_header']['group_coordinate_x'])/xsca
+                        xall = []
+                        for trace in st:
+                            xall.append(float(trace.stats.segy['trace_header']['group_coordinate_x'])/xsca)
                         
                     else:
                         
@@ -885,21 +957,42 @@ class Refrapick(Tk):
                     self.sources.append(source)
                     self.x1s.append(x1)
                     self.xends.append(xend)
+                    self.xalls.append(xall)
                     self.nchannels.append(len(st))
                     self.samplingRates.append(int(st[0].stats['sampling_rate']))
                     self.originalSamplingRates.append(int(st[0].stats['sampling_rate']))
+                    self.originalMaxTime = max([max(tr.times()+self.delay) for tr in st])
+                    self.delay = delay
                         
                     frame = Frame(self)
                     frame.grid(row = 1, column = 0, sticky = "WE")
                     fig = plt.figure(figsize = (15.9,8.1))
                     canvas = FigureCanvasTkAgg(fig, frame)
-                    canvas.draw()
+                    canvas.draw_idle()
                     toolbar = NavigationToolbar2Tk(canvas, frame)
                     toolbar.update()
                     canvas._tkcanvas.pack()
                     ax = fig.add_subplot(111)
                     fig.patch.set_facecolor('#F0F0F0')
                     ax.set_facecolor(self.backgroundColor)
+
+                    # Create an initial inset axes for the zoom window
+                    axin = ax.inset_axes([0.5-0.3/2, 0.3-0.3/2, 0.3, 0.3])
+                    # Set the color of the axes, ticks, and tick labels to blue
+                    axin.spines['bottom'].set_color('blue')
+                    axin.spines['top'].set_color('blue') 
+                    axin.spines['right'].set_color('blue')
+                    axin.spines['left'].set_color('blue')
+
+                    axin.xaxis.label.set_color('blue')
+                    axin.yaxis.label.set_color('blue')
+
+                    axin.tick_params(axis='x', colors='blue')
+                    axin.tick_params(axis='y', colors='blue')
+
+                    axin.set_visible(False)  # Hide the inset axes
+                    self.axins.append(axin)
+
                     self.tracesMaxs.append([])
                     self.tpicks.append([])
                     self.xpicks.append([])
@@ -908,54 +1001,104 @@ class Refrapick(Tk):
                     self.figs.append(fig)
                     self.sts.append(st)
                     self.tracesArts.append([])
+                    self.tracesArtsIn.append([])
                     self.pickLineArts.append(False)
                     self.fillArts.append([])
+                    self.fillArtsIn.append([])
                     self.tracesData.append([])
                     self.tracesTime.append([])
-                    self.pickConnections.append([False,False,False,False])
+                    self.pickConnections.append([False,False,False,False,False,False])
                     self.velConnections.append([False,False,False])
                     self.originalTracesData.append([])
                     self.originalTracesTimes.append([])
                     self.receiverPositions.append([])
                     self.gains.append(1)
-                    self.fillSide.append(0)
-                    self.amplitudeClip.append(0)
+                    # self.fillSide.append(-1)
+                    # self.amplitudeClip.append(1)
                     self.invertedTimeAxis.append(1)
                     self.filters.append([False,False])
                     self.picksArts.append([])
+                    self.picksArtsIn.append([])
+                    self.updatePlots.append(True)
                     
                     for j, tr in enumerate(st):
 
                         tr.data *= -1
                         self.tracesMaxs[i+n].append(max(tr.data))
-                        t, = ax.plot(tr.data/max(tr.data)+x1+dx*j, tr.times()+delay, c = self.traceColor, lw = .7)
+                        t, = ax.plot(tr.data/max(tr.data)+xall[j], tr.times()+self.delay, c = self.traceColor, lw = .7)
                         self.tracesArts[i+n].append(t)
+                        tIn, = axin.plot(tr.data/max(tr.data)+xall[j], tr.times()+self.delay, c = self.traceColor, lw = .7)
+                        self.tracesArtsIn[i+n].append(tIn)
                         self.tracesData[i+n].append(tr.data)
-                        self.tracesTime[i+n].append(tr.times()+delay)
+                        self.tracesTime[i+n].append(tr.times()+self.delay,)
                         self.originalTracesData[i+n].append(tr.data)
-                        self.originalTracesTimes[i+n].append(tr.times()+delay)
+                        self.originalTracesTimes[i+n].append(tr.times()+self.delay,)
 
                         if st[0].stats._format == "SEG2": self.receiverPositions[i+n].append(float(tr.stats.seg2['RECEIVER_LOCATION']))
-                        else: self.receiverPositions[i+n].append(x1+j*dx)
+                        else: self.receiverPositions[i+n].append(xall[j])
+                    
+                        t.get_xdata()[t.get_xdata() < xall[j]-((dx/2)*0.9)] = xall[j]-((dx/2)*0.9)
+                        t.get_xdata()[t.get_xdata() > xall[j]+((dx/2)*0.9)] = xall[j]+((dx/2)*0.9)
+                        t.set_xdata(t.get_xdata())
 
+                        tIn.get_xdata()[tIn.get_xdata() < xall[j]-((dx/2)*0.9)] = xall[j]-((dx/2)*0.9)
+                        tIn.get_xdata()[tIn.get_xdata() > xall[j]+((dx/2)*0.9)] = xall[j]+((dx/2)*0.9)
+                        tIn.set_xdata(tIn.get_xdata())
+
+
+                        fill = ax.fill_betweenx(t.get_ydata(),
+                                            xall[j],
+                                            t.get_xdata(),
+                                            where = t.get_xdata() >= xall[j],
+                                            color=self.fillColor)     
+                        self.fillArts[i+n].append(fill)
+
+                        fillIn = axin.fill_betweenx(t.get_ydata(),
+                                            xall[j],
+                                            t.get_xdata(),
+                                            where = t.get_xdata() >= xall[j],
+                                            color=self.fillColor)     
+                        self.fillArtsIn[i+n].append(fillIn)
+                    
                     ax.set_ylabel("TIME [s]")
                     ax.set_xlabel("RECEIVER POSITION [m]")
+                    axin.set_ylabel("TIME [s]")
+                    axin.set_xlabel("RECEIVER POSITION [m]")
+
                     if self.grid: ax.grid(lw = .5, alpha = .5, c = self.gridColor, ls = self.gridStyle)
-                    ax.set_title(path.basename(file)+" | dx = %.2f m | source = %.2f m | sampling = %d Hz | filters = no"%(dx,source,self.originalSamplingRates[i]))
+                    ax.set_title(path.basename(file)+" | source = %.2f m | dx = %.2f m | traces = %d | sampling = %d Hz | gain = %d"%(source,dx,
+                                                                                                                                        self.nchannels[i],
+                                                                                                                                       self.originalSamplingRates[i],
+                                                                                                                                       self.gains[i]))
                     self.stNames.append(path.basename(file))
-                    ax.set_ylim(min(tr.times()+delay), max(tr.times()+delay))
+
+                    if self.maxTime:
+                        max_time = self.maxTime
+                    else:
+                        max_time = self.originalMaxTime
+                        self.maxTime = max_time
+                    
+                    ax.set_ylim(min(tr.times()+self.delay,), max_time)
                     ax.set_xlim(x1-dx/2, xend+dx/2)
                     ax.invert_yaxis()
 
-                for f in self.figs: f.canvas.draw()
+                    # Draw a cross at the center of the inset
+                    axin.annotate('', xy=(0.5, 0), xycoords='axes fraction', xytext=(0.5, 1), textcoords='axes fraction', arrowprops=dict(arrowstyle="-", color='b'))
+                    axin.annotate('', xy=(0, 0.5), xycoords='axes fraction', xytext=(1, 0.5), textcoords='axes fraction', arrowprops=dict(arrowstyle="-", color='b'))
+
+                    self.yLimSet()
+
+                    self.figs[i+n].canvas.draw_idle()                    
                 
                 self.frames[0].tkraise()
                 self.statusLabel.lift()
                 self.statusLabel.configure(text="Waveform(s) ready!",font=("Arial", 11))
                 self.currentSt = 0
             
-                if n == 0: messagebox.showinfo('Refrapick','%d file(s) loaded succesfully!'%len(files))
-                else: messagebox.showinfo('Refrapick','%d new file(s) loaded succesfully!'%len(files))
+                if n == 0: print('Refrapick: %d file(s) loaded succesfully!' % len(files))
+                else: print('Refrapick: %d new file(s) loaded succesfully!' % len(files))
+
+                # self.updatePlots = [False for _ in self.updatePlots]
 
     def help(self):
 
@@ -963,7 +1106,7 @@ class Refrapick(Tk):
         helpWindow.title('Refrapick - Help')
         helpWindow.configure(bg = "#F0F0F0")
         helpWindow.resizable(0,0)
-        helpWindow.iconbitmap("%s/images/ico_refrapy.ico"%getcwd())
+        # helpWindow.iconbitmap("%s/images/ico_refrapy.ico"%getcwd())
 
         Label(helpWindow, text = """Refrapy - Refrapick v2.0.0
 
@@ -993,13 +1136,13 @@ E-mail: vjs279@hotmail.com
             surveyWindow.title('Refrapick - View survey')
             surveyWindow.configure(bg = "#F0F0F0")
             surveyWindow.resizable(0,0)
-            surveyWindow.iconbitmap("%s/images/ico_refrapy.ico"%getcwd())
+            # surveyWindow.iconbitmap("%s/images/ico_refrapy.ico"%getcwd())
 
             frame = Frame(surveyWindow, width=20, height=20)
             frame.grid(row = 0, column = 0)
             fig = plt.figure(figsize = (14.2,8.62))
             canvas = FigureCanvasTkAgg(fig, frame)
-            canvas.draw()
+            canvas.draw_idle()
             toolbar = NavigationToolbar2Tk(canvas, frame)
             toolbar.update()
             canvas._tkcanvas.pack()
@@ -1016,7 +1159,7 @@ E-mail: vjs279@hotmail.com
                 ax.scatter(self.sources[i], self.stNames[i], marker = "*", c = "y", edgecolor = "k", s = 150, zorder = 99)
 
             ax.invert_yaxis()
-            fig.canvas.draw()
+            fig.canvas.draw_idle()
             surveyWindow.tkraise()
     
     def invertTimeAxis(self):
@@ -1024,25 +1167,47 @@ E-mail: vjs279@hotmail.com
         if self.sts:
 
             self.axs[self.currentSt].invert_yaxis()
+            self.axins[self.currentSt].invert_yaxis()
             
             if self.invertedTimeAxis[self.currentSt] == 1: self.invertedTimeAxis[self.currentSt] = 0
             else: self.invertedTimeAxis[self.currentSt] = 1
 
-            self.figs[self.currentSt].canvas.draw()
+            self.figs[self.currentSt].canvas.draw_idle()
 
     def updatePlotTitle(self):
 
-        if self.filters[self.currentSt][1] and self.filters[self.currentSt][0]: self.axs[self.currentSt].set_title("%s | dx = %.2f m | source = %.2f m | sampling = %d Hz | filters = %.2f Hz - %.2f Hz"%(self.stNames[self.currentSt],
-                                                                                                                                         self.dxs[self.currentSt],self.sources[self.currentSt],self.samplingRates[self.currentSt],self.filters[self.currentSt][0],self.filters[self.currentSt][1]))
+        if self.filters[self.currentSt][1] and self.filters[self.currentSt][0]: self.axs[self.currentSt].set_title("%s | source = %.2f m | dx = %.2f m | traces = %d |sampling = %d Hz | filters = %.2f Hz - %.2f Hz | gain = %d"%(self.stNames[self.currentSt],
+                                                                                                                                         self.sources[self.currentSt],
+                                                                                                                                         self.dxs[self.currentSt],
+                                                                                                                                         self.nchannels[self.currentSt],
+                                                                                                                                         self.samplingRates[self.currentSt],
+                                                                                                                                         self.filters[self.currentSt][0],
+                                                                                                                                         self.filters[self.currentSt][1],
+                                                                                                                                         self.gains[self.currentSt]))
                     
-        elif self.filters[self.currentSt][1] and not self.filters[self.currentSt][0]: self.axs[self.currentSt].set_title("%s | dx = %.2f m | source = %.2f m | sampling = %d Hz | filters = %.2f Hz (low-pass)"%(self.stNames[self.currentSt],
-                                                                                                                                    self.dxs[self.currentSt],self.sources[self.currentSt],self.samplingRates[self.currentSt],self.filters[self.currentSt][1]))
+        elif self.filters[self.currentSt][1] and not self.filters[self.currentSt][0]: self.axs[self.currentSt].set_title("%s | source = %.2f m | dx = %.2f m | traces = %d |sampling = %d Hz | filters = %.2f Hz (low-pass) | gain = %d"%(self.stNames[self.currentSt],
+                                                                                                                                    self.sources[self.currentSt],
+                                                                                                                                    self.dxs[self.currentSt],
+                                                                                                                                    self.nchannels[self.currentSt],
+                                                                                                                                    self.samplingRates[self.currentSt],
+                                                                                                                                    self.filters[self.currentSt][1],
+                                                                                                                                    self.gains[self.currentSt]))
         
-        elif self.filters[self.currentSt][0] and not self.filters[self.currentSt][1]: self.axs[self.currentSt].set_title("%s | dx = %.2f m | source = %.2f m | sampling = %d Hz | filters = %.2f Hz (high-pass)"%(self.stNames[self.currentSt],
-                                                                                                                                     self.dxs[self.currentSt],self.sources[self.currentSt],self.samplingRates[self.currentSt],self.filters[self.currentSt][0]))
-        else: self.axs[self.currentSt].set_title("%s | dx = %.2f m | source = %.2f m | sampling = %d Hz | filters = no"%(self.stNames[self.currentSt],self.dxs[self.currentSt],self.sources[self.currentSt],
-                                                                                                                         self.samplingRates[self.currentSt]))
-        self.figs[self.currentSt].canvas.draw()
+        elif self.filters[self.currentSt][0] and not self.filters[self.currentSt][1]: self.axs[self.currentSt].set_title("%s | source = %.2f m | dx = %.2f m | traces = %d | sampling = %d Hz | filters = %.2f Hz (high-pass) | gain = %d"%(self.stNames[self.currentSt],
+                                                                                                                                    self.sources[self.currentSt],
+                                                                                                                                    self.dxs[self.currentSt],
+                                                                                                                                    self.nchannels[self.currentSt],
+                                                                                                                                    self.samplingRates[self.currentSt],
+                                                                                                                                    self.filters[self.currentSt][0],
+                                                                                                                                    self.gains[self.currentSt]))
+            
+        else: self.axs[self.currentSt].set_title("%s | source = %.2f m | dx = %.2f m | traces = %d | sampling = %d Hz | gain = %d"%(self.stNames[self.currentSt],
+                                                                                                                                     self.sources[self.currentSt],
+                                                                                                                                     self.dxs[self.currentSt],
+                                                                                                                                     self.nchannels[self.currentSt],
+                                                                                                                                     self.samplingRates[self.currentSt],
+                                                                                                                                     self.gains[self.currentSt]))
+        self.figs[self.currentSt].canvas.draw_idle()
         
     def resampleTraces(self):
 
@@ -1061,17 +1226,19 @@ E-mail: vjs279@hotmail.com
                         new_data, new_time = resample(tr, n, self.tracesTime[self.currentSt][i])
                         self.tracesData[self.currentSt][i] = new_data
                         self.tracesTime[self.currentSt][i] = new_time
-                        self.tracesArts[self.currentSt][i].set_xdata(new_data/max(new_data)*self.gains[self.currentSt]+self.x1s[self.currentSt]+self.dxs[self.currentSt]*i)
+                        self.tracesArts[self.currentSt][i].set_xdata(new_data/max(new_data)*self.gains[self.currentSt]+self.xalls[self.currentSt][i])
                         self.tracesArts[self.currentSt][i].set_ydata(new_time)
+                        self.tracesArtsIn[self.currentSt][i].set_xdata(new_data/max(new_data)*self.gains[self.currentSt]+self.xalls[self.currentSt][i])
+                        self.tracesArtsIn[self.currentSt][i].set_ydata(new_time)
 
                     self.samplingRates[self.currentSt] = newSamplingFreq
 
                     self.updatePlotTitle()
                     
-                    if self.fillSide[self.currentSt] == 1: self.fillPositive()
-                    elif self.fillSide[self.currentSt] == -1: self.fillNegative()
+                    if self.fillSide == 0: self.wigglesOnly()
+                    elif self.fillSide == -1: self.fillNegative()
 
-                    if self.amplitudeClip[self.currentSt] == 1: self.amplitudeClip[self.currentSt] = 0; self.clipAmplitudes()
+                    self.clipAmplitudes()
                     
                 else: messagebox.showerror('Refrapick','Enter a value greater or equal than 100 Hz!')
                 
@@ -1088,143 +1255,262 @@ E-mail: vjs279@hotmail.com
                     self.tracesData[self.currentSt][i] = self.tracesData[self.currentSt][i][self.tracesTime[self.currentSt][i] <= maxTime]
                     self.tracesTime[self.currentSt][i] = self.tracesTime[self.currentSt][i][self.tracesTime[self.currentSt][i] <= maxTime]
 
-                    self.tracesArts[self.currentSt][i].set_xdata(self.tracesData[self.currentSt][i]/max(self.tracesData[self.currentSt][i])*self.gains[self.currentSt]+self.x1s[self.currentSt]+self.dxs[self.currentSt]*i)
+                    self.tracesArts[self.currentSt][i].set_xdata(self.tracesData[self.currentSt][i]/max(self.tracesData[self.currentSt][i])*self.gains[self.currentSt]+self.xalls[self.currentSt][i])
                     self.tracesArts[self.currentSt][i].set_ydata(self.tracesTime[self.currentSt][i])
+
+                    self.tracesArtsIn[self.currentSt][i].set_xdata(self.tracesData[self.currentSt][i]/max(self.tracesData[self.currentSt][i])*self.gains[self.currentSt]+self.xalls[self.currentSt][i])
+                    self.tracesArtsIn[self.currentSt][i].set_ydata(self.tracesTime[self.currentSt][i])
 
                 self.axs[self.currentSt].set_ylim(min(self.tracesArts[self.currentSt][0].get_ydata()),
                                                       max(self.tracesArts[self.currentSt][0].get_ydata()))
                 
                 if self.invertedTimeAxis[self.currentSt] == 1: self.axs[self.currentSt].invert_yaxis()
 
-                self.figs[self.currentSt].canvas.draw()
+                self.figs[self.currentSt].canvas.draw_idle()
                 
-                if self.fillSide[self.currentSt] == 1: self.fillPositive()
-                elif self.fillSide[self.currentSt] == -1: self.fillNegative()
+                if self.fillSide == 0: self.wigglesOnly()
+                elif self.fillSide == -1: self.fillNegative()
 
-                if self.amplitudeClip[self.currentSt] == 1: self.amplitudeClip[self.currentSt] = 0; self.clipAmplitudes()
+                self.clipAmplitudes()
 
     def clipAmplitudes(self):
 
         if self.sts:
 
-            if self.amplitudeClip[self.currentSt] == 0:
+            if self.amplitudeClip == 1:
 
                 for i, tr in enumerate(self.tracesArts[self.currentSt]):
                     
-                    tr.get_xdata()[tr.get_xdata() < self.x1s[self.currentSt]+i*self.dxs[self.currentSt]-((self.dxs[self.currentSt]/2)*0.9)] = self.x1s[self.currentSt]+i*self.dxs[self.currentSt]-((self.dxs[self.currentSt]/2)*0.9)
-                    tr.get_xdata()[tr.get_xdata() > self.x1s[self.currentSt]+i*self.dxs[self.currentSt]+((self.dxs[self.currentSt]/2)*0.9)] = self.x1s[self.currentSt]+i*self.dxs[self.currentSt]+((self.dxs[self.currentSt]/2)*0.9)
+                    tr.get_xdata()[tr.get_xdata() < self.xalls[self.currentSt][i]-((self.dxs[self.currentSt]/2)*0.9)] = self.xalls[self.currentSt][i]-((self.dxs[self.currentSt]/2)*0.9)
+                    tr.get_xdata()[tr.get_xdata() > self.xalls[self.currentSt][i]+((self.dxs[self.currentSt]/2)*0.9)] = self.xalls[self.currentSt][i]+((self.dxs[self.currentSt]/2)*0.9)
                     tr.set_xdata(tr.get_xdata())
 
-                self.amplitudeClip[self.currentSt] = 1
+                for i, tr in enumerate(self.tracesArtsIn[self.currentSt]):
+                    
+                    tr.get_xdata()[tr.get_xdata() < self.xalls[self.currentSt][i]-((self.dxs[self.currentSt]/2)*0.9)] = self.xalls[self.currentSt][i]-((self.dxs[self.currentSt]/2)*0.9)
+                    tr.get_xdata()[tr.get_xdata() > self.xalls[self.currentSt][i]+((self.dxs[self.currentSt]/2)*0.9)] = self.xalls[self.currentSt][i]+((self.dxs[self.currentSt]/2)*0.9)
+                    tr.set_xdata(tr.get_xdata())
+
+                self.amplitudeClip = 0
 
             else:
 
                 for i, tr in enumerate(self.tracesArts[self.currentSt]):
 
                     amp = self.tracesData[self.currentSt][i]
-                    tr.set_xdata(amp/max(amp)*self.gains[self.currentSt]+self.x1s[self.currentSt]+self.dxs[self.currentSt]*i)
+                    tr.set_xdata(amp/max(amp)*self.gains[self.currentSt]+self.xalls[self.currentSt][i])
 
-                self.amplitudeClip[self.currentSt] = 0
+                for i, tr in enumerate(self.tracesArtsIn[self.currentSt]):
 
-            if self.fillSide[self.currentSt] == 1: self.fillPositive()
-            elif self.fillSide[self.currentSt] == -1: self.fillNegative()
+                    amp = self.tracesData[self.currentSt][i]
+                    tr.set_xdata(amp/max(amp)*self.gains[self.currentSt]+self.xalls[self.currentSt][i])
+
+                self.amplitudeClip = 1
+
+            if self.fillSide == 0: self.wigglesOnly()
+            elif self.fillSide == -1: self.fillNegative()
+            elif self.fillSide == 1: self.fillPositive()
                 
-            self.figs[self.currentSt].canvas.draw()
+            self.figs[self.currentSt].canvas.draw_idle()
             
     def wigglesOnly(self):
 
-        if self.fillSide[self.currentSt] == 1 or self.fillSide[self.currentSt] == -1:
+        if self.fillSide == 1 or self.fillSide == -1:
 
             for i in range(len(self.sts[self.currentSt])):
                 
                 self.fillArts[self.currentSt][:].pop(i).remove()
+                self.fillArtsIn[self.currentSt][:].pop(i).remove()
 
             del self.fillArts[self.currentSt][:]
-            self.fillSide[self.currentSt] = 0
-            self.figs[self.currentSt].canvas.draw()
+            del self.fillArtsIn[self.currentSt][:]
+            self.fillSide = 0
+            self.figs[self.currentSt].canvas.draw_idle()
+
+            # self.updatePlots = [True for _ in self.updatePlots]
     
     def fillNegative(self):
 
         if self.sts:
 
-            if self.fillSide[self.currentSt] == -1 or self.fillSide[self.currentSt] == 1:
+            if self.fillSide == -1 or self.fillSide == 1:
 
                 for i in range(len(self.sts[self.currentSt])):
                     
-                    self.fillArts[self.currentSt][:].pop(i).remove()
+                    if len(self.fillArts[self.currentSt]) > i:
+                        self.fillArts[self.currentSt][:].pop(i).remove()
+                        self.fillArtsIn[self.currentSt][:].pop(i).remove()
                         
                 del self.fillArts[self.currentSt][:]
+                del self.fillArtsIn[self.currentSt][:]
                 
             for i in range(len(self.sts[self.currentSt])):
 
                 fill = self.axs[self.currentSt].fill_betweenx(self.tracesArts[self.currentSt][i].get_ydata(),
-                                self.x1s[self.currentSt]+self.dxs[self.currentSt]*i,
+                                self.xalls[self.currentSt][i],
                                 self.tracesArts[self.currentSt][i].get_xdata(),
-                                where = self.tracesArts[self.currentSt][i].get_xdata() <= self.x1s[self.currentSt]+i*self.dxs[self.currentSt],
+                                where = self.tracesArts[self.currentSt][i].get_xdata() <= self.xalls[self.currentSt][i],
                                 color=self.fillColor)     
                 self.fillArts[self.currentSt].append(fill)
 
-            self.fillSide[self.currentSt] = -1
-            self.figs[self.currentSt].canvas.draw()
+                fillIn = self.axins[self.currentSt].fill_betweenx(self.tracesArtsIn[self.currentSt][i].get_ydata(),
+                                self.xalls[self.currentSt][i],
+                                self.tracesArtsIn[self.currentSt][i].get_xdata(),
+                                where = self.tracesArtsIn[self.currentSt][i].get_xdata() <= self.xalls[self.currentSt][i],
+                                color=self.fillColor)     
+                self.fillArtsIn[self.currentSt].append(fillIn)
+
+            self.fillSide = -1
+            self.figs[self.currentSt].canvas.draw_idle()
+
+            # self.updatePlots = [True for _ in self.updatePlots]
 
     def fillPositive(self):
 
         if self.sts:
 
-            if self.fillSide[self.currentSt] == -1 or self.fillSide[self.currentSt] == 1:
+            if self.fillSide == -1 or self.fillSide == 1:
 
                 for i in range(len(self.sts[self.currentSt])):
                     
-                    self.fillArts[self.currentSt][:].pop(i).remove()
+                    if len(self.fillArts[self.currentSt]) > i:
+                        self.fillArts[self.currentSt][:].pop(i).remove()
+                        self.fillArtsIn[self.currentSt][:].pop(i).remove()
                         
                 del self.fillArts[self.currentSt][:]
+                del self.fillArtsIn[self.currentSt][:]
 
                 
             for i in range(len(self.sts[self.currentSt])):
 
                 fill = self.axs[self.currentSt].fill_betweenx(self.tracesArts[self.currentSt][i].get_ydata(),
-                                self.x1s[self.currentSt]+self.dxs[self.currentSt]*i,
+                                self.xalls[self.currentSt][i],
                                 self.tracesArts[self.currentSt][i].get_xdata(),
-                                where = self.tracesArts[self.currentSt][i].get_xdata() >= self.x1s[self.currentSt]+i*self.dxs[self.currentSt],
+                                where = self.tracesArts[self.currentSt][i].get_xdata() >= self.xalls[self.currentSt][i],
                                 color=self.fillColor)     
                 self.fillArts[self.currentSt].append(fill)
+                fillIn = self.axins[self.currentSt].fill_betweenx(self.tracesArtsIn[self.currentSt][i].get_ydata(),
+                                self.xalls[self.currentSt][i],
+                                self.tracesArtsIn[self.currentSt][i].get_xdata(),
+                                where = self.tracesArtsIn[self.currentSt][i].get_xdata() >= self.xalls[self.currentSt][i],
+                                color=self.fillColor)     
+                self.fillArtsIn[self.currentSt].append(fillIn)
 
-            self.fillSide[self.currentSt] = 1
-            self.figs[self.currentSt].canvas.draw()
+            self.fillSide = 1
+            self.figs[self.currentSt].canvas.draw_idle()
+
+            # self.updatePlots = [True for _ in self.updatePlots]
+
+    def setGain(self):
+
+        if self.sts:
+            
+            for i in range(len(self.tracesArts[self.currentSt])):
+                self.tracesArts[self.currentSt][i].set_xdata(self.tracesData[self.currentSt][i]/max(self.tracesData[self.currentSt][i])*self.gain+self.xalls[self.currentSt][i])
+
+            for i, tr in enumerate(self.tracesArts[self.currentSt]):
+                tr.get_xdata()[tr.get_xdata() < self.xalls[self.currentSt][i]-((self.dxs[self.currentSt]/2)*0.9)] = self.xalls[self.currentSt][i]-((self.dxs[self.currentSt]/2)*0.9)
+                tr.get_xdata()[tr.get_xdata() > self.xalls[self.currentSt][i]+((self.dxs[self.currentSt]/2)*0.9)] = self.xalls[self.currentSt][i]+((self.dxs[self.currentSt]/2)*0.9)
+                tr.set_xdata(tr.get_xdata())
+
+            for i in range(len(self.tracesArtsIn[self.currentSt])):
+                self.tracesArtsIn[self.currentSt][i].set_xdata(self.tracesData[self.currentSt][i]/max(self.tracesData[self.currentSt][i])*self.gain+self.xalls[self.currentSt][i])
+
+            for i, tr in enumerate(self.tracesArtsIn[self.currentSt]):
+                tr.get_xdata()[tr.get_xdata() < self.xalls[self.currentSt][i]-((self.dxs[self.currentSt]/2)*0.9)] = self.xalls[self.currentSt][i]-((self.dxs[self.currentSt]/2)*0.9)
+                tr.get_xdata()[tr.get_xdata() > self.xalls[self.currentSt][i]+((self.dxs[self.currentSt]/2)*0.9)] = self.xalls[self.currentSt][i]+((self.dxs[self.currentSt]/2)*0.9)
+                tr.set_xdata(tr.get_xdata())
+
+            self.gains[self.currentSt] = self.gain
+
+            self.updatePlotTitle()
+            self.figs[self.currentSt].canvas.draw_idle()
+            
+            if self.fillSide == 0: self.wigglesOnly()
+            elif self.fillSide == -1: self.fillNegative()
+            elif self.fillSide == 1: self.fillPositive()
+
+            if self.amplitudeClip == 1: self.amplitudeClip = 0; self.clipAmplitudes()
 
     def addGain(self):
 
         if self.sts:
 
             self.gains[self.currentSt] += self.gainFactor
+            self.gain = self.gains[self.currentSt]
             
             for i in range(len(self.tracesArts[self.currentSt])):
-                
-                self.tracesArts[self.currentSt][i].set_xdata(self.tracesData[self.currentSt][i]/max(self.tracesData[self.currentSt][i])*self.gains[self.currentSt]+self.x1s[self.currentSt]+self.dxs[self.currentSt]*i)
+                self.tracesArts[self.currentSt][i].set_xdata(self.tracesData[self.currentSt][i]/max(self.tracesData[self.currentSt][i])*self.gains[self.currentSt]+self.xalls[self.currentSt][i])
 
-            self.figs[self.currentSt].canvas.draw()
+            for i, tr in enumerate(self.tracesArts[self.currentSt]):
+                    tr.get_xdata()[tr.get_xdata() < self.xalls[self.currentSt][i]-((self.dxs[self.currentSt]/2)*0.9)] = self.xalls[self.currentSt][i]-((self.dxs[self.currentSt]/2)*0.9)
+                    tr.get_xdata()[tr.get_xdata() > self.xalls[self.currentSt][i]+((self.dxs[self.currentSt]/2)*0.9)] = self.xalls[self.currentSt][i]+((self.dxs[self.currentSt]/2)*0.9)
+                    tr.set_xdata(tr.get_xdata())
+
+            for i in range(len(self.tracesArtsIn[self.currentSt])):
+                self.tracesArtsIn[self.currentSt][i].set_xdata(self.tracesData[self.currentSt][i]/max(self.tracesData[self.currentSt][i])*self.gains[self.currentSt]+self.xalls[self.currentSt][i])
+
+            for i, tr in enumerate(self.tracesArtsIn[self.currentSt]):
+                    tr.get_xdata()[tr.get_xdata() < self.xalls[self.currentSt][i]-((self.dxs[self.currentSt]/2)*0.9)] = self.xalls[self.currentSt][i]-((self.dxs[self.currentSt]/2)*0.9)
+                    tr.get_xdata()[tr.get_xdata() > self.xalls[self.currentSt][i]+((self.dxs[self.currentSt]/2)*0.9)] = self.xalls[self.currentSt][i]+((self.dxs[self.currentSt]/2)*0.9)
+                    tr.set_xdata(tr.get_xdata())
+
+            self.updatePlotTitle()
+            self.figs[self.currentSt].canvas.draw_idle()
             
-            if self.fillSide[self.currentSt] == 1: self.fillPositive()
-            elif self.fillSide[self.currentSt] == -1: self.fillNegative()
+            if self.fillSide == 0: self.wigglesOnly()
+            elif self.fillSide == -1: self.fillNegative()
+            elif self.fillSide == 1: self.fillPositive()
 
-            if self.amplitudeClip[self.currentSt] == 1: self.amplitudeClip[self.currentSt] = 0; self.clipAmplitudes()
+            if self.amplitudeClip == 1: self.amplitudeClip = 0; self.clipAmplitudes()
+
+            # self.updatePlots = [True for _ in self.updatePlots]
 
     def removeGain(self):
 
         if self.sts:
 
             if self.gains[self.currentSt] - self.gainFactor >= 1: self.gains[self.currentSt] -= self.gainFactor
+            self.gain = self.gains[self.currentSt]
 
             for i in range(len(self.tracesArts[self.currentSt])):
+                self.tracesArts[self.currentSt][i].set_xdata(self.tracesData[self.currentSt][i]/max(self.tracesData[self.currentSt][i])*self.gains[self.currentSt]+self.xalls[self.currentSt][i])
 
-                self.tracesArts[self.currentSt][i].set_xdata(self.tracesData[self.currentSt][i]/max(self.tracesData[self.currentSt][i])*self.gains[self.currentSt]+self.x1s[self.currentSt]+self.dxs[self.currentSt]*i)
+            for i, tr in enumerate(self.tracesArts[self.currentSt]):
+                tr.get_xdata()[tr.get_xdata() < self.xalls[self.currentSt][i]-((self.dxs[self.currentSt]/2)*0.9)] = self.xalls[self.currentSt][i]-((self.dxs[self.currentSt]/2)*0.9)
+                tr.get_xdata()[tr.get_xdata() > self.xalls[self.currentSt][i]+((self.dxs[self.currentSt]/2)*0.9)] = self.xalls[self.currentSt][i]+((self.dxs[self.currentSt]/2)*0.9)
+                tr.set_xdata(tr.get_xdata())
 
-            self.figs[self.currentSt].canvas.draw()
+            for i in range(len(self.tracesArtsIn[self.currentSt])):
+                self.tracesArtsIn[self.currentSt][i].set_xdata(self.tracesData[self.currentSt][i]/max(self.tracesData[self.currentSt][i])*self.gains[self.currentSt]+self.xalls[self.currentSt][i])
+
+            for i, tr in enumerate(self.tracesArtsIn[self.currentSt]):
+                tr.get_xdata()[tr.get_xdata() < self.xalls[self.currentSt][i]-((self.dxs[self.currentSt]/2)*0.9)] = self.xalls[self.currentSt][i]-((self.dxs[self.currentSt]/2)*0.9)
+                tr.get_xdata()[tr.get_xdata() > self.xalls[self.currentSt][i]+((self.dxs[self.currentSt]/2)*0.9)] = self.xalls[self.currentSt][i]+((self.dxs[self.currentSt]/2)*0.9)
+                tr.set_xdata(tr.get_xdata())
+                        
+            self.updatePlotTitle()
+            self.figs[self.currentSt].canvas.draw_idle()
             
-            if self.fillSide[self.currentSt] == 1: self.fillPositive()
-            elif self.fillSide[self.currentSt] == -1: self.fillNegative()
+            if self.fillSide == 0: self.wigglesOnly()
+            elif self.fillSide == -1: self.fillNegative()
+            elif self.fillSide == 1: self.fillPositive()
 
-            if self.amplitudeClip[self.currentSt] == 1: self.amplitudeClip[self.currentSt] = 0; self.clipAmplitudes()
+            if self.amplitudeClip == 1: self.amplitudeClip = 0; self.clipAmplitudes()
+
+            # self.updatePlots = [True for _ in self.updatePlots]
+
+    def yLimSet(self):
+
+        if self.sts:
+
+            if self.maxTime:
+                self.axs[self.currentSt].set_ylim(min(self.tracesArts[self.currentSt][0].get_ydata()),
+                                                  self.maxTime)
+            
+            if self.invertedTimeAxis[self.currentSt] == 1: self.axs[self.currentSt].invert_yaxis()
+                
+            self.figs[self.currentSt].canvas.draw_idle()
             
     def yLimUp(self):
 
@@ -1232,21 +1518,29 @@ E-mail: vjs279@hotmail.com
 
             self.axs[self.currentSt].set_ylim(min(self.tracesArts[self.currentSt][0].get_ydata()),
                                                   self.axs[self.currentSt].get_ylim()[0]*0.8)
-            
+                        
             if self.invertedTimeAxis[self.currentSt] == 1: self.axs[self.currentSt].invert_yaxis()
                 
-            self.figs[self.currentSt].canvas.draw()
+            self.figs[self.currentSt].canvas.draw_idle()
+
+            self.maxTime = self.axs[self.currentSt].get_ylim()[0]
+
+            # self.updatePlots = [True for _ in self.updatePlots]
 
     def yLimDown(self):
 
         if self.sts:
-
+            
             self.axs[self.currentSt].set_ylim(min(self.tracesArts[self.currentSt][0].get_ydata()),
-                                                  self.axs[self.currentSt].get_ylim()[0]*1.2)
+                                                  self.axs[self.currentSt].get_ylim()[0]*1.2)          
             
             if self.invertedTimeAxis[self.currentSt] == 1: self.axs[self.currentSt].invert_yaxis()
                 
-            self.figs[self.currentSt].canvas.draw()
+            self.figs[self.currentSt].canvas.draw_idle()
+
+            self.maxTime = self.axs[self.currentSt].get_ylim()[0]
+
+            # self.updatePlots = [True for _ in self.updatePlots]
 
     def applyFilters(self):
 
@@ -1296,12 +1590,16 @@ E-mail: vjs279@hotmail.com
                 for i, tr in enumerate(self.tracesArts[self.currentSt]):
 
                         amp = self.tracesData[self.currentSt][i]
-                        tr.set_xdata(amp/max(amp)*self.gains[self.currentSt]+self.x1s[self.currentSt]+self.dxs[self.currentSt]*i)
+                        tr.set_xdata(amp/max(amp)*self.gains[self.currentSt]+self.xalls[self.currentSt][i])
 
-                if self.fillSide[self.currentSt] == 1: self.fillPositive()
-                elif self.fillSide[self.currentSt] == -1: self.fillNegative()
+                for i, tr in enumerate(self.tracesArtsIn[self.currentSt]):
 
-                if self.amplitudeClip[self.currentSt] == 1: self.amplitudeClip[self.currentSt] = 0; self.clipAmplitudes()
+                        amp = self.tracesData[self.currentSt][i]
+                        tr.set_xdata(amp/max(amp)*self.gains[self.currentSt]+self.xalls[self.currentSt][i])
+
+                if self.fillSide == 1 or self.fillSide == -1: self.wigglesOnly()
+
+                self.clipAmplitudes()
 
                 self.updatePlotTitle()
 
@@ -1316,7 +1614,15 @@ E-mail: vjs279@hotmail.com
                 for i, tr in enumerate(self.tracesArts[self.currentSt]):
 
                     amp = self.originalTracesData[self.currentSt][i]
-                    tr.set_xdata(amp/max(amp)*self.gains[self.currentSt]+self.x1s[self.currentSt]+self.dxs[self.currentSt]*i)
+                    tr.set_xdata(amp/max(amp)*self.gains[self.currentSt]+self.xalls[self.currentSt][i])
+                    tr.set_ydata(self.originalTracesTimes[self.currentSt][i])
+                    self.tracesData[self.currentSt][i] = amp
+                    self.tracesTime[self.currentSt][i] = self.originalTracesTimes[self.currentSt][i]
+
+                for i, tr in enumerate(self.tracesArtsIn[self.currentSt]):
+
+                    amp = self.originalTracesData[self.currentSt][i]
+                    tr.set_xdata(amp/max(amp)*self.gains[self.currentSt]+self.xalls[self.currentSt][i])
                     tr.set_ydata(self.originalTracesTimes[self.currentSt][i])
                     self.tracesData[self.currentSt][i] = amp
                     self.tracesTime[self.currentSt][i] = self.originalTracesTimes[self.currentSt][i]
@@ -1325,8 +1631,8 @@ E-mail: vjs279@hotmail.com
                 self.filters[self.currentSt][1] = False
                 self.samplingRates[self.currentSt] = self.originalSamplingRates[self.currentSt]
                 
-                self.axs[self.currentSt].set_title("%s | dx = %.2f m | source = %.2f m | sampling = %d Hz | filters = no"%(self.stNames[self.currentSt],self.dxs[self.currentSt],self.sources[self.currentSt],
-                                                                                                                           self.originalSamplingRates[self.currentSt]))
+                self.axs[self.currentSt].set_title("%s | dx = %.2f m | source = %.2f m | sampling = %d Hz | gain = %d"%(self.stNames[self.currentSt],self.dxs[self.currentSt],self.sources[self.currentSt],
+                                                                                                                           self.originalSamplingRates[self.currentSt],self.gains[self.currentSt]))
 
                 if self.invertedTimeAxis[self.currentSt] == 1:
                     
@@ -1336,13 +1642,17 @@ E-mail: vjs279@hotmail.com
                     self.axs[self.currentSt].set_ylim(min(self.originalTracesTimes[self.currentSt][0]), max(self.originalTracesTimes[self.currentSt][0]))
                     
                 self.axs[self.currentSt].set_xlim(self.x1s[self.currentSt]-self.dxs[self.currentSt]/2, self.xends[self.currentSt]+self.dxs[self.currentSt]/2)
-                self.figs[self.currentSt].canvas.draw()
+                self.figs[self.currentSt].canvas.draw_idle()
                 
-                if self.fillSide[self.currentSt] == 1 or self.fillSide[self.currentSt] == -1: self.wigglesOnly()
+                if self.fillSide == 1 or self.fillSide == -1: self.wigglesOnly()
                 
-                if self.amplitudeClip[self.currentSt] == 1: self.clipAmplitudes()
-            
+                self.clipAmplitudes()   
+
+
     def pick(self):
+
+        from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+        self.figs[self.currentSt].canvas.get_tk_widget().config(cursor='cross')
 
         if self.sts:
 
@@ -1351,14 +1661,39 @@ E-mail: vjs279@hotmail.com
                 if self.velMode: self.appVelMode()
 
                 self.statusLabel.configure(text="Pick mode enabled!",font=("Arial", 11))
-                messagebox.showinfo(title="Refrapick", message="Pick mode enabled")
+                # messagebox.showinfo(title="Refrapick", message="Pick mode enabled")
+                print("Refrapick: Pick mode enabled!")
+
+                # Mouse motion event callback
+                def on_move(event):
+
+                    # Return immediately if the mouse is outside the axes
+                    if event.xdata is None or event.ydata is None:
+                        return
+
+                    # Update the limits of the zoom window to zoom in on the plot around the mouse pointer
+                    time_factor = 0.01  # The time window will be 0.01 x the total time of the plot
+                    self.axins[self.currentSt].set_xlim(event.xdata - self.dxs[self.currentSt]*2, event.xdata + self.dxs[self.currentSt]*2)
+                    self.axins[self.currentSt].set_ylim(event.ydata - self.originalMaxTime*time_factor, event.ydata + self.originalMaxTime*time_factor)
+
+                    # Reverse the y-axis of the inset
+                    self.axins[self.currentSt].invert_yaxis()
+
+                    # Make the zoom window visible
+                    self.axins[self.currentSt].set_visible(True)
+
+                    # Redraw the figure
+                    self.figs[self.currentSt].canvas.draw_idle()
+                    self.figs[self.currentSt].canvas.get_tk_widget().config(cursor='cross')
 
                 def createPick(x,t):
 
                     for j in range(len(x)):
                         
                         pickline = self.axs[self.currentSt].scatter(x[j], t[j], marker = self.pickMarker, s = self.pickSize*self.dxs[self.currentSt], color=self.pickColor)
+                        pickline_inset = self.axins[self.currentSt].scatter(x[j], t[j], marker = self.pickMarker, s = self.pickSize*self.dxs[self.currentSt]*2, color=self.pickColor)
                         self.picksArts[self.currentSt].append(pickline)
+                        self.picksArtsIn[self.currentSt].append(pickline_inset)
                         self.xpicks[self.currentSt].append(x[j])
                         self.tpicks[self.currentSt].append(t[j])
 
@@ -1367,8 +1702,9 @@ E-mail: vjs279@hotmail.com
                         self.drawPicksLine()
                         self.pickLineArts[self.currentSt] = False
                         self.drawPicksLine()
-                        
-                    self.figs[self.currentSt].canvas.draw()
+                    
+                    self.figs[self.currentSt].canvas.draw_idle()
+                    self.figs[self.currentSt].canvas.get_tk_widget().config(cursor='cross')
                     
                 def reworkPick(x,t):
 
@@ -1376,10 +1712,24 @@ E-mail: vjs279@hotmail.com
                         
                         index2remove = self.xpicks[self.currentSt].index(x[j])
                         self.picksArts[self.currentSt][index2remove].remove()
+                        self.picksArtsIn[self.currentSt][index2remove].remove()
                         del self.picksArts[self.currentSt][index2remove]
+                        del self.picksArtsIn[self.currentSt][index2remove]
                         del self.xpicks[self.currentSt][index2remove]
                         del self.tpicks[self.currentSt][index2remove]
                         createPick([x[j]],[t[j]])
+
+                def removePick(x,t):
+
+                    for j in range(len(x)):
+                        
+                        index2remove = self.xpicks[self.currentSt].index(x[j])
+                        self.picksArts[self.currentSt][index2remove].remove()
+                        self.picksArtsIn[self.currentSt][index2remove].remove()
+                        del self.picksArts[self.currentSt][index2remove]
+                        del self.picksArtsIn[self.currentSt][index2remove]
+                        del self.xpicks[self.currentSt][index2remove]
+                        del self.tpicks[self.currentSt][index2remove]
 
                 def click1(event):
 
@@ -1389,6 +1739,14 @@ E-mail: vjs279@hotmail.com
 
                         if x not in self.xpicks[self.currentSt]: createPick([x],[event.ydata])
                         else: reworkPick([x],[event.ydata])
+
+                def click3(event):
+
+                    if event.button == 2:
+
+                        x = min(self.receiverPositions[self.currentSt], key = lambda x: abs(event.xdata - x))
+
+                        if x in self.xpicks[self.currentSt]: removePick([x],[event.ydata])
 
                 def click2(event):
 
@@ -1410,7 +1768,7 @@ E-mail: vjs279@hotmail.com
                         self.xpickLine.append(event.xdata)
                         self.tpickLine.append(event.ydata)
                         self.pickLine.set_data(self.xpickLine,self.tpickLine)
-                        self.figs[self.currentSt].canvas.draw()
+                        self.figs[self.currentSt].canvas.draw_idle()
                         del self.xpickLine[1:-1]
                         del self.tpickLine[1:-1]
                         self.click2on = True
@@ -1445,7 +1803,7 @@ E-mail: vjs279@hotmail.com
                         if xpicks2rework: reworkPick(xpicks2rework,tpicks2rework)
                         
                         self.pickLine.remove()
-                        self.figs[self.currentSt].canvas.draw()
+                        self.figs[self.currentSt].canvas.draw_idle()
                         del self.xpickLine[:]
                         del self.tpickLine[:]
                         self.click2on = False
@@ -1455,13 +1813,17 @@ E-mail: vjs279@hotmail.com
                     self.click2on = False
                     conPick1 = self.figs[i].canvas.mpl_connect('button_press_event', click1)
                     conPick2 = self.figs[i].canvas.mpl_connect('button_press_event', click2)
+                    conPick3 = self.figs[i].canvas.mpl_connect('button_press_event', click3)
                     conMove = self.figs[i].canvas.mpl_connect('motion_notify_event', move)
                     conRelease = self.figs[i].canvas.mpl_connect('button_release_event', release)
+                    conOnMove = self.figs[i].canvas.mpl_connect('motion_notify_event', on_move)
                     self.pickConnections[i][0] = conPick1
                     self.pickConnections[i][1] = conPick2
-                    self.pickConnections[i][2] = conMove
-                    self.pickConnections[i][3] = conRelease
-                    self.pickMode = True
+                    self.pickConnections[i][2] = conPick3
+                    self.pickConnections[i][3] = conMove
+                    self.pickConnections[i][4] = conRelease
+                    self.pickConnections[i][5] = conOnMove
+                    self.pickMode = True                
 
             else:
                 
@@ -1472,10 +1834,17 @@ E-mail: vjs279@hotmail.com
                     self.pickConnections[i][1] = False
                     self.pickConnections[i][2] = False
                     self.pickConnections[i][3] = False
+                    self.pickConnections[i][4] = False
+                    self.pickConnections[i][5] = False
 
                 self.pickMode = False
                 self.statusLabel.configure(text="Pick mode disabled!",font=("Arial", 11))
-                messagebox.showinfo(title="Refrapick", message="Pick mode disabled!")
+                # messagebox.showinfo(title="Refrapick", message="Pick mode disabled!")
+                print("Refrapick: Pick mode disabled!")
+                self.figs[self.currentSt].canvas.get_tk_widget().config(cursor='arrow')
+                # Hide the zoom window
+                self.axins[self.currentSt].set_visible(False)
+                self.figs[self.currentSt].canvas.draw_idle()
             
     def drawPicksLine(self):
 
@@ -1496,7 +1865,7 @@ E-mail: vjs279@hotmail.com
                     self.pickLineArts[self.currentSt].remove()
                     self.pickLineArts[self.currentSt] = False
                     
-                self.figs[self.currentSt].canvas.draw()
+                self.figs[self.currentSt].canvas.draw_idle()
 
     def savePicks(self):
 
@@ -1510,7 +1879,7 @@ E-mail: vjs279@hotmail.com
 
                     allx.append(pos)
       
-                if self.xpicks[i]: pickPresent = True
+                if self.xpicks[i]: pickPresent = True; break
                 else: pickPresent = False
             
             sgx = list(set(allx+self.sources))
@@ -1544,11 +1913,14 @@ E-mail: vjs279@hotmail.com
                         xinds = array(sgx).argsort()
                         sgx = array(sgx)[xinds]
                         sgz = array(sgz)[xinds]
-                        pickFile = filedialog.asksaveasfilename(title='Save',initialdir = self.projPath+"/picks/",filetypes=[('Pick file', '*.sgt')])
+                        pickFile = filedialog.asksaveasfilename(title='Save',
+                                                                initialdir = self.projPath+"/picks/",
+                                                                initialfile=path.basename(self.projPath)+'.sgt',
+                                                                filetypes=[('Pick file', '*.sgt')])
 
                         if pickFile:
 
-                            with open(pickFile+".sgt", "w") as outFile:
+                            with open(pickFile, "w") as outFile:
 
                                 outFile.write("%d # shot/geophone points\n#x y\n"%(len(sgx)))
                                 
@@ -1577,13 +1949,22 @@ E-mail: vjs279@hotmail.com
                                         t = tpick
                                         outFile.write("%d %d %.6f\n"%(s,g,t))
 
+                            print("Refrapick: The pick file has been saved!")
+                        else:
+                            print("Refrapick: No pick file saved!")
+
                 else:
 
-                    pickFile = filedialog.asksaveasfilename(title='Save',initialdir = self.projPath+"/picks/",filetypes=[('Pick file', '*.sgt')])
+                    pickFile = filedialog.asksaveasfilename(title='Save',
+                                                            initialdir = self.projPath+"/picks/",
+                                                            initialfile=path.basename(self.projPath)+'.sgt',
+                                                            filetypes=[('Pick file', '*.sgt')])
+                    xinds = array(sgx).argsort()
+                    sgx = array(sgx)[xinds]
 
                     if pickFile:
                         
-                        with open(pickFile+".sgt", "w") as outFile:
+                        with open(pickFile, "w") as outFile:
 
                             outFile.write("%d # shot/geophone points\n"%(len(sgx)))
                             outFile.write("#x y\n")
@@ -1614,7 +1995,10 @@ E-mail: vjs279@hotmail.com
                                     outFile.write("%d %d %.6f\n"%(s,g,t))
                                     
                                     
-                messagebox.showinfo(title="Refrapick", message="The pick file has been saved!")
+                        # messagebox.showinfo(title="Refrapick", message="The pick file has been saved!")
+                        print("Refrapick: The pick file has been saved!")
+                    else:
+                        print("Refrapick: No pick file saved!")
                 
     def clearPicks(self):
 
@@ -1630,11 +2014,13 @@ E-mail: vjs279@hotmail.com
                         self.pickLineArts[self.currentSt] = False
 
                     for pickArt in self.picksArts[self.currentSt]: pickArt.remove()
+                    for pickArtIn in self.picksArtsIn[self.currentSt]: pickArtIn.remove()
                     del self.picksArts[self.currentSt][:]
+                    del self.picksArtsIn[self.currentSt][:]
                     del self.xpicks[self.currentSt][:]
                     del self.tpicks[self.currentSt][:]
 
-                    self.figs[self.currentSt].canvas.draw()
+                    self.figs[self.currentSt].canvas.draw_idle()
                     messagebox.showinfo(title="Refrapick", message="All picks in %s have been deleted!"%self.stNames[self.currentSt])
     
     def loadPicks(self):
@@ -1666,14 +2052,20 @@ E-mail: vjs279@hotmail.com
 
                                 pickline = self.axs[i].hlines(t[j], gx[j]-(self.dxs[i]*0.25),gx[j]+(self.dxs[i]*0.25),color='r')
                                 self.picksArts[i].append(pickline)
+                                pickline_inset = self.axins[i].hlines(t[j], gx[j]-(self.dxs[i]*0.25),gx[j]+(self.dxs[i]*0.25),color='r')
+                                self.picksArtsIn[i].append(pickline_inset)
                                 self.xpicks[i].append(gx[j])
                                 self.tpicks[i].append(t[j])
                                 loaded = True
                                 
-                        self.figs[i].canvas.draw()
+                        self.figs[i].canvas.draw_idle()
 
-                    if loaded: messagebox.showinfo(title="Refrapick", message="The pick file has been loaded!")
-                    else: messagebox.showerror(title="Refrapick", message="The pick file was not loaded: check if you have selected the correct pick file for the opened waveforms!")
+                    if loaded: 
+                        # messagebox.showinfo(title="Refrapick", message="The pick file has been loaded!")
+                        print("Refrapick: The pick file has been loaded!")
+                    else: 
+                        # messagebox.showerror(title="Refrapick", message="The pick file was not loaded: check if you have selected the correct pick file for the opened waveforms!")
+                        print("Refrapick: The pick file was not loaded: check the selected pick file!")
          
     def allPicks(self):
 
@@ -1704,7 +2096,7 @@ E-mail: vjs279@hotmail.com
                     for ttPlot in self.ttArts: ttPlot.remove()
                     del self.ttArts[:]
 
-                self.figs[self.currentSt].canvas.draw()
+                self.figs[self.currentSt].canvas.draw_idle()
 
     def viewTraveltimes(self):
 
@@ -1722,13 +2114,13 @@ E-mail: vjs279@hotmail.com
                 ttWindow.title('Refrapick - View traveltimes')
                 ttWindow.configure(bg = "#F0F0F0")
                 ttWindow.resizable(0,0)
-                ttWindow.iconbitmap("%s/images/ico_refrapy.ico"%getcwd())
+                # ttWindow.iconbitmap("%s/images/ico_refrapy.ico"%getcwd())
 
                 frame = Frame(ttWindow, width=20, height=20)
                 frame.grid(row = 0, column = 0)
                 fig = plt.figure(figsize = (14.2,8.62))
                 canvas = FigureCanvasTkAgg(fig, frame)
-                canvas.draw()
+                canvas.draw_idle()
                 toolbar = NavigationToolbar2Tk(canvas, frame)
                 toolbar.update()
                 canvas._tkcanvas.pack()
@@ -1749,7 +2141,7 @@ E-mail: vjs279@hotmail.com
 
                 ax.invert_yaxis()
                 ax.legend(loc="best")
-                fig.canvas.draw()
+                fig.canvas.draw_idle()
                 ttWindow.tkraise()
 
     def appVelMode(self):
@@ -1761,7 +2153,8 @@ E-mail: vjs279@hotmail.com
                 if self.pickMode: self.pick()
 
                 self.statusLabel.configure(text="Apparent velocity mode enabled!",font=("Arial", 11))
-                messagebox.showinfo(title="Refrapick", message="Apparent velocity mode enabled")
+                # messagebox.showinfo(title="Refrapick", message="Apparent velocity mode enabled")
+                print("Refrapick: Apparent velocity mode enabled!")
 
                 self.velLines = []
                 self.velTexts = []
@@ -1789,7 +2182,7 @@ E-mail: vjs279@hotmail.com
                             self.xvelLine.append(event.xdata)
                             self.tvelLine.append(event.ydata)
                             self.velLine.set_data(self.xvelLine,self.tvelLine)
-                            self.figs[self.currentSt].canvas.draw()
+                            self.figs[self.currentSt].canvas.draw_idle()
                             del self.xvelLine[1:-1]
                             del self.tvelLine[1:-1]
                             self.clickon = True
@@ -1816,7 +2209,7 @@ E-mail: vjs279@hotmail.com
                             txt = self.axs[self.currentSt].text(xarray2vel[0],tarray2vel[0],"%d m/s"%(abs(1/m)), backgroundcolor = "w")
                             self.velTexts.append(txt)
                             self.clickon = False
-                            self.figs[self.currentSt].canvas.draw()
+                            self.figs[self.currentSt].canvas.draw_idle()
  
                     self.clickon = False
                     conClick = self.figs[i].canvas.mpl_connect('button_press_event', click)
@@ -1842,11 +2235,12 @@ E-mail: vjs279@hotmail.com
                     self.velConnections[i][0] = False
                     self.velConnections[i][1] = False
                     self.velConnections[i][2] = False
-                    self.figs[i].canvas.draw()
+                    self.figs[i].canvas.draw_idle()
                     
                 self.velMode = False
                 self.statusLabel.configure(text="Apparent velocity mode disabled!",font=("Arial", 11))
-                messagebox.showinfo(title="Refrapick", message="Apparent velocity mode disabled!")
+                # messagebox.showinfo(title="Refrapick", message="Apparent velocity mode disabled!")
+                print("Refrapick: Apparent velocity mode disabled!")
     
 app = Refrapick()
 app.mainloop()

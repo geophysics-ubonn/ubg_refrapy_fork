@@ -32,7 +32,7 @@ class Refrainv(Tk):
         self.title('Refrapy - Refrainv v2.0.0')
         self.configure(bg = "#F0F0F0")
         self.resizable(0,0)
-        self.iconbitmap("%s/images/ico_refrapy.ico"%getcwd())
+        # self.iconbitmap("%s/images/ico_refrapy.ico"%getcwd())
 
         frame_toolbar = Frame(self)
         frame_toolbar.grid(row=0,column=0,sticky="EW")
@@ -164,7 +164,7 @@ class Refrainv(Tk):
         helpWindow.title('Refrapick - Help')
         helpWindow.configure(bg = "#F0F0F0")
         helpWindow.resizable(0,0)
-        helpWindow.iconbitmap("%s/images/ico_refrapy.ico"%getcwd())
+        # helpWindow.iconbitmap("%s/images/ico_refrapy.ico"%getcwd())
 
         Label(helpWindow, text = """Refrapy - Refrainv v2.0.0
 
@@ -935,7 +935,7 @@ E-mail: vjs279@hotmail.com
             tomoWindow.configure(bg = "#F0F0F0")
             tomoWindow.geometry("300x640")
             tomoWindow.resizable(0,0)
-            tomoWindow.iconbitmap("%s/images/ico_refrapy.ico"%getcwd())
+            # tomoWindow.iconbitmap("%s/images/ico_refrapy.ico"%getcwd())
 
             def viewMesh():
 
@@ -949,7 +949,7 @@ E-mail: vjs279@hotmail.com
                 meshWindow.configure(bg = "#F0F0F0")
                 #meshWindow.geometry("1024x768")
                 meshWindow.resizable(0,0)
-                meshWindow.iconbitmap("%s/images/ico_refrapy.ico"%getcwd())
+                # meshWindow.iconbitmap("%s/images/ico_refrapy.ico"%getcwd())
 
                 frame = Frame(meshWindow)
                 frame.grid(row = 0, column = 0)
@@ -1266,7 +1266,7 @@ E-mail: vjs279@hotmail.com
             fitWindow.title('Refrainv - Fit')
             fitWindow.configure(bg = "#F0F0F0")
             fitWindow.resizable(0,0)
-            fitWindow.iconbitmap("%s/images/ico_refrapy.ico"%getcwd())
+            # fitWindow.iconbitmap("%s/images/ico_refrapy.ico"%getcwd())
 
             frame1 = Frame(fitWindow)
             frame1.grid(row = 0, column = 0)
@@ -1349,7 +1349,7 @@ E-mail: vjs279@hotmail.com
             pgWindow.title('Refrainv - Velocity model with mesh')
             pgWindow.configure(bg = "#F0F0F0")
             pgWindow.resizable(0,0)
-            pgWindow.iconbitmap("%s/images/ico_refrapy.ico"%getcwd())
+            # pgWindow.iconbitmap("%s/images/ico_refrapy.ico"%getcwd())
 
             frame = Frame(pgWindow)
             frame.grid(row = 0, column = 0)
@@ -1431,7 +1431,7 @@ E-mail: vjs279@hotmail.com
                 plot3dwindow.configure(bg = "#F0F0F0")
                 plot3dwindow.geometry("1600x900")
                 plot3dwindow.resizable(0,0)
-                plot3dwindow.iconbitmap("%s/images/ico_refrapy.ico"%getcwd())
+                # plot3dwindow.iconbitmap("%s/images/ico_refrapy.ico"%getcwd())
 
                 frame_buttons = Frame(plot3dwindow)
                 frame_buttons.grid(row = 0, column = 0, columnspan=100,sticky="W")
@@ -1808,7 +1808,7 @@ E-mail: vjs279@hotmail.com
         plotOptionsWindow.configure(bg = "#F0F0F0")
         plotOptionsWindow.geometry("350x450")
         plotOptionsWindow.resizable(0,0)
-        plotOptionsWindow.iconbitmap("%s/images/ico_refrapy.ico"%getcwd())
+        # plotOptionsWindow.iconbitmap("%s/images/ico_refrapy.ico"%getcwd())
         Label(plotOptionsWindow, text = "Plot options",font=("Arial", 11)).grid(row=0,column=0,sticky="EW",pady=5,padx=65)
         Button(plotOptionsWindow,text="Show/hide ray path", command = rayPath, width = 30).grid(row = 1, column = 0,pady=5,padx=65)
         Button(plotOptionsWindow,text="Change ray path line color", command = rayPathLineColor, width = 30).grid(row = 2, column = 0,pady=5,padx=65)
