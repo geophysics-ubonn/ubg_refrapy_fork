@@ -1,5 +1,16 @@
 ![alt text](https://github.com/viictorjs/Refrapy/blob/master/refrapy_logo.png)
 
+## Changes in SP Fork (Jan 2024)
+- read segy and su file with headers
+- get positions from headers, allowing unevenly spaced traces
+- zoomed inset when picking to improve precision
+- "remove pick" option with the middle button of the mouse
+- default clip + positive fill wiggle display
+- apply display (clip, time, gain, wiggle) changes to all opened shots
+- add option to set maximum displayed time for all shots in 'plot options'
+- less pop up messages to improve productivity
+- + other bug corrections
+
 ## Summary
 
 [Introduction to the software and installation of dependencies](#introduction)
