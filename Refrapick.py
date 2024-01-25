@@ -248,6 +248,7 @@ class Refrapick(Tk):
         self.sts = []
         self.xpicks = []
         self.tpicks = []
+        self.errpicks = []
         self.sources = []
         self.dxs = []
         self.x1s = []
@@ -299,7 +300,6 @@ class Refrapick(Tk):
         self.traveltimesColor = "g"
         self.traveltimesStyle = "--"
         self.pickSize = 100
-        self.updatePlots = []
 
     def kill(self):
 
@@ -565,7 +565,7 @@ class Refrapick(Tk):
                                 del self.picksArtsIn[i][:]
 
                                 for j,x in enumerate(self.xpicks[i]):
-
+                                    
                                     pickline = self.axs[i].scatter(x, self.tpicks[i][j], marker = self.pickMarker, s = self.pickSize*self.dxs[i], color=self.pickColor)
                                     pickline_inset = self.axins[i].scatter(x, self.tpicks[i][j], marker = self.pickMarker, s = self.pickSize*self.dxs[i], color=self.pickColor)
                                     self.picksArts[i].append(pickline)   
@@ -700,10 +700,7 @@ class Refrapick(Tk):
         Button(plotOptionsWindow,text="Change traveltimes line style", command = editTraveltimeLineStyle, width = 30).grid(row = 13, column = 0,pady=5,padx=65)
         Button(plotOptionsWindow,text="Change scale gain factor", command = editGainFactor, width = 30).grid(row = 14, column = 0,pady=5,padx=65)
         
-        plotOptionsWindow.tkraise()
-
-        self.updatePlots = [True for _ in self.updatePlots]
-        
+        plotOptionsWindow.tkraise()        
     
     def options(self):
 
@@ -994,6 +991,7 @@ class Refrapick(Tk):
                     self.axins.append(axin)
 
                     self.tracesMaxs.append([])
+                    self.errpicks.append([])
                     self.tpicks.append([])
                     self.xpicks.append([])
                     self.frames.append(frame)
@@ -1019,7 +1017,6 @@ class Refrapick(Tk):
                     self.filters.append([False,False])
                     self.picksArts.append([])
                     self.picksArtsIn.append([])
-                    self.updatePlots.append(True)
                     
                     for j, tr in enumerate(st):
 
@@ -1097,8 +1094,6 @@ class Refrapick(Tk):
             
                 if n == 0: print('Refrapick: %d file(s) loaded succesfully!' % len(files))
                 else: print('Refrapick: %d new file(s) loaded succesfully!' % len(files))
-
-                # self.updatePlots = [False for _ in self.updatePlots]
 
     def help(self):
 
@@ -1326,8 +1321,6 @@ E-mail: vjs279@hotmail.com
             del self.fillArtsIn[self.currentSt][:]
             self.fillSide = 0
             self.figs[self.currentSt].canvas.draw_idle()
-
-            # self.updatePlots = [True for _ in self.updatePlots]
     
     def fillNegative(self):
 
@@ -1363,8 +1356,6 @@ E-mail: vjs279@hotmail.com
             self.fillSide = -1
             self.figs[self.currentSt].canvas.draw_idle()
 
-            # self.updatePlots = [True for _ in self.updatePlots]
-
     def fillPositive(self):
 
         if self.sts:
@@ -1398,8 +1389,6 @@ E-mail: vjs279@hotmail.com
 
             self.fillSide = 1
             self.figs[self.currentSt].canvas.draw_idle()
-
-            # self.updatePlots = [True for _ in self.updatePlots]
 
     def setGain(self):
 
@@ -1464,8 +1453,6 @@ E-mail: vjs279@hotmail.com
 
             if self.amplitudeClip == 1: self.amplitudeClip = 0; self.clipAmplitudes()
 
-            # self.updatePlots = [True for _ in self.updatePlots]
-
     def removeGain(self):
 
         if self.sts:
@@ -1498,8 +1485,6 @@ E-mail: vjs279@hotmail.com
 
             if self.amplitudeClip == 1: self.amplitudeClip = 0; self.clipAmplitudes()
 
-            # self.updatePlots = [True for _ in self.updatePlots]
-
     def yLimSet(self):
 
         if self.sts:
@@ -1525,8 +1510,6 @@ E-mail: vjs279@hotmail.com
 
             self.maxTime = self.axs[self.currentSt].get_ylim()[0]
 
-            # self.updatePlots = [True for _ in self.updatePlots]
-
     def yLimDown(self):
 
         if self.sts:
@@ -1539,8 +1522,6 @@ E-mail: vjs279@hotmail.com
             self.figs[self.currentSt].canvas.draw_idle()
 
             self.maxTime = self.axs[self.currentSt].get_ylim()[0]
-
-            # self.updatePlots = [True for _ in self.updatePlots]
 
     def applyFilters(self):
 
@@ -1686,16 +1667,39 @@ E-mail: vjs279@hotmail.com
                     self.figs[self.currentSt].canvas.draw_idle()
                     self.figs[self.currentSt].canvas.get_tk_widget().config(cursor='cross')
 
+                def errorPick(t,err=0.1,relative_error=True,minAbsErr=0.5e-3,maxAbsErr=5e-3,maxRelErr=None):
+                    # t: time (in s)
+                    # err: error (in s or fraction of t)
+                    # absolute_error: if True, use err as absolute error (in s), else use err as relative error (in fraction of t)
+                    # minAbsErr: minimum absolute error (in s)
+                    # maxAbsErr: maximum absolute error (in s)
+                    # maxRelErr: maximum relative error (in fraction of t)
+                        
+                        if relative_error:
+                            err = err*t
+                            if maxAbsErr is not None:
+                                if err>maxAbsErr: err = maxAbsErr
+                            
+                            if minAbsErr is not None:
+                                if err<minAbsErr: err = minAbsErr
+                        else:
+                            if maxRelErr is not None:
+                                if err>maxRelErr*t: err = maxRelErr*t
+
+                        return err
+
                 def createPick(x,t):
 
                     for j in range(len(x)):
                         
                         pickline = self.axs[self.currentSt].scatter(x[j], t[j], marker = self.pickMarker, s = self.pickSize*self.dxs[self.currentSt], color=self.pickColor)
                         pickline_inset = self.axins[self.currentSt].scatter(x[j], t[j], marker = self.pickMarker, s = self.pickSize*self.dxs[self.currentSt]*2, color=self.pickColor)
+                        
                         self.picksArts[self.currentSt].append(pickline)
                         self.picksArtsIn[self.currentSt].append(pickline_inset)
                         self.xpicks[self.currentSt].append(x[j])
                         self.tpicks[self.currentSt].append(t[j])
+                        self.errpicks[self.currentSt].append(errorPick(t[j]))
 
                     if self.pickLineArts[self.currentSt]:
                         
@@ -1717,6 +1721,7 @@ E-mail: vjs279@hotmail.com
                         del self.picksArtsIn[self.currentSt][index2remove]
                         del self.xpicks[self.currentSt][index2remove]
                         del self.tpicks[self.currentSt][index2remove]
+                        del self.errpicks[self.currentSt][index2remove]
                         createPick([x[j]],[t[j]])
 
                 def removePick(x,t):
@@ -1730,6 +1735,7 @@ E-mail: vjs279@hotmail.com
                         del self.picksArtsIn[self.currentSt][index2remove]
                         del self.xpicks[self.currentSt][index2remove]
                         del self.tpicks[self.currentSt][index2remove]
+                        del self.errpicks[self.currentSt][index2remove]
 
                 def click1(event):
 
@@ -1856,8 +1862,10 @@ E-mail: vjs279@hotmail.com
 
                     xinds = array(self.xpicks[self.currentSt]).argsort()
                     sortedx = array(self.xpicks[self.currentSt])[xinds]
-                    sortedt = array(self.tpicks[self.currentSt])[xinds]             
+                    sortedt = array(self.tpicks[self.currentSt])[xinds]
+                    sortederr = array(self.errpicks[self.currentSt])[xinds]           
                     line, = self.axs[self.currentSt].plot(sortedx,sortedt,c=self.pickLineColor,lw=.7)
+                    # line, = self.axs[self.currentSt].errorbar(sortedx,sortedt,yerr=sortederr,c=self.pickLineColor,lw=.7)
                     self.pickLineArts[self.currentSt] = line
 
                 else:
@@ -1932,22 +1940,24 @@ E-mail: vjs279@hotmail.com
                                 
                                 for i in range(len(self.sts)): nMeasurements+=len(self.xpicks[i])
                                 
-                                outFile.write("%d # measurements\n#s g t\n"%nMeasurements)
+                                outFile.write("%d # measurements\n#s g t err\n"%nMeasurements)
 
                                 for i in range(len(self.sts)):
 
                                     xinds = array(self.xpicks[i]).argsort()
                                     sortedxpicks = array(self.xpicks[i])[xinds]
-                                    sortedtpicks = array(self.tpicks[i])[xinds]     
+                                    sortedtpicks = array(self.tpicks[i])[xinds]    
+                                    sortederrpicks = array(self.errpicks[i])[xinds]     
 
-                                    for xpick, tpick in zip(sortedxpicks, sortedtpicks):
+                                    for xpick, tpick, errpick in zip(sortedxpicks, sortedtpicks, sortederrpicks):
 
                                         #s = where(sgx == self.sources[i])[0][0]+1
                                         #g = where(sgx == xpick)[0][0]+1
                                         s = isclose(array(sgx), array(self.sources[i])).nonzero()[0]+1
                                         g = isclose(array(sgx), array(xpick)).nonzero()[0]+1
                                         t = tpick
-                                        outFile.write("%d %d %.6f\n"%(s,g,t))
+                                        err = errpick
+                                        outFile.write("%d %d %.6f %.6f\n"%(s,g,t,err))
 
                             print("Refrapick: The pick file has been saved!")
                         else:
@@ -1977,22 +1987,24 @@ E-mail: vjs279@hotmail.com
                                 
                             for i in range(len(self.sts)): nMeasurements+=len(self.xpicks[i])
                             
-                            outFile.write("%d # measurements\n#s g t\n"%nMeasurements)
+                            outFile.write("%d # measurements\n#s g t err\n"%nMeasurements)
 
                             for i in range(len(self.sts)):
 
                                 xinds = array(self.xpicks[i]).argsort()
                                 sortedxpicks = array(self.xpicks[i])[xinds]
-                                sortedtpicks = array(self.tpicks[i])[xinds]     
+                                sortedtpicks = array(self.tpicks[i])[xinds]
+                                sortederrpicks = array(self.errpicks[i])[xinds]     
 
-                                for xpick, tpick in zip(sortedxpicks, sortedtpicks):
+                                for xpick, tpick, errpick in zip(sortedxpicks, sortedtpicks, sortederrpicks):
 
                                     #s = where(sgx == self.sources[i])[0][0]+1
                                     #g = where(sgx == xpick)[0][0]+1
                                     s = isclose(array(sgx), array(self.sources[i])).nonzero()[0]+1
                                     g = isclose(array(sgx), array(xpick)).nonzero()[0]+1
                                     t = tpick
-                                    outFile.write("%d %d %.6f\n"%(s,g,t))
+                                    err = errpick
+                                    outFile.write("%d %d %.6f %.6f\n"%(s,g,t,err))
                                     
                                     
                         # messagebox.showinfo(title="Refrapick", message="The pick file has been saved!")
@@ -2019,6 +2031,7 @@ E-mail: vjs279@hotmail.com
                     del self.picksArtsIn[self.currentSt][:]
                     del self.xpicks[self.currentSt][:]
                     del self.tpicks[self.currentSt][:]
+                    del self.errpicks[self.currentSt][:]
 
                     self.figs[self.currentSt].canvas.draw_idle()
                     messagebox.showinfo(title="Refrapick", message="All picks in %s have been deleted!"%self.stNames[self.currentSt])
@@ -2036,10 +2049,37 @@ E-mail: vjs279@hotmail.com
                     lines = file.readlines()
                     npoints = int(lines[0].split()[0])
                     sgx = [float(i.split()[0]) for i in lines[2:2+npoints]]
-                    sgtindx = lines.index("#s g t\n")
-                    s = [int(i.split()[0]) for i in lines[sgtindx+1:]]
-                    g = [int(i.split()[1]) for i in lines[sgtindx+1:]]
-                    t = [float(i.split()[2]) for i in lines[sgtindx+1:]]
+
+                    # Initialize a counter for lines that start with '#'
+                    count = 0
+                    # Iterate over the lines
+                    for i, line in enumerate(lines):
+                        # If the line starts with '#'
+                        if line.startswith('#'):
+                            # Increment the counter
+                            count += 1
+                            # If this is the second line that starts with '#'
+                            if count == 2:
+                                # Store the index and break the loop
+                                sgtindx = i
+                                break
+                    # Get the index positions of 's', 'g', and 't', starting from the second character
+                    words = lines[sgtindx][1:].split()
+                    print(words)
+                    s_index = words.index('s')
+                    g_index = words.index('g')
+                    t_index = words.index('t')
+                    if 'err' in words:
+                        err_index = words.index('err')
+
+                    # sgtindx = lines.index("#s g t err\n")
+                    s = [int(i.split()[s_index]) for i in lines[sgtindx+1:]]
+                    g = [int(i.split()[g_index]) for i in lines[sgtindx+1:]]
+                    t = [float(i.split()[t_index]) for i in lines[sgtindx+1:]]
+                    if 'err' in words:
+                        err = [float(i.split()[err_index]) for i in lines[sgtindx+1:]]
+                    else:
+                        err = t*0                          
                     sx = [sgx[i-1] for i in s]
                     gx = [sgx[i-1] for i in g]
                     loaded = False
@@ -2050,12 +2090,13 @@ E-mail: vjs279@hotmail.com
 
                             if self.sources[i] == sx[j] and gx[j] in self.receiverPositions[i]:
 
-                                pickline = self.axs[i].hlines(t[j], gx[j]-(self.dxs[i]*0.25),gx[j]+(self.dxs[i]*0.25),color='r')
+                                pickline = self.axs[i].scatter(gx[j], t[j], marker = self.pickMarker, s = self.pickSize*self.dxs[self.currentSt], color=self.pickColor)
                                 self.picksArts[i].append(pickline)
-                                pickline_inset = self.axins[i].hlines(t[j], gx[j]-(self.dxs[i]*0.25),gx[j]+(self.dxs[i]*0.25),color='r')
+                                pickline_inset = self.axins[i].scatter(gx[j], t[j], marker = self.pickMarker, s = self.pickSize*self.dxs[self.currentSt], color=self.pickColor)
                                 self.picksArtsIn[i].append(pickline_inset)
                                 self.xpicks[i].append(gx[j])
                                 self.tpicks[i].append(t[j])
+                                self.errpicks[i].append(err[j])
                                 loaded = True
                                 
                         self.figs[i].canvas.draw_idle()
@@ -2088,7 +2129,9 @@ E-mail: vjs279@hotmail.com
                             xinds = array(self.xpicks[i]).argsort()
                             sortedxpicks = array(self.xpicks[i])[xinds]
                             sortedtpicks = array(self.tpicks[i])[xinds]
+                            sortederrpicks = array(self.errpicks[i])[xinds]
                             l, = self.axs[self.currentSt].plot(sortedxpicks,sortedtpicks,ls=self.traveltimesStyle,lw=.7,c=self.traveltimesColor)                    
+                            # l, = self.axs[self.currentSt].errorbar(sortedxpicks,sortedtpicks,yerr=sortederrpicks,ls=self.traveltimesStyle,lw=.7,c=self.traveltimesColor)                    
                             self.ttArts.append(l)
 
                 else:
@@ -2136,7 +2179,9 @@ E-mail: vjs279@hotmail.com
                     xinds = array(self.xpicks[i]).argsort()
                     sortedxpicks = array(self.xpicks[i])[xinds]
                     sortedtpicks = array(self.tpicks[i])[xinds]
+                    sortederrpicks = array(self.errpicks[i])[xinds]
                     ax.plot(sortedxpicks,sortedtpicks, '-o', label = self.stNames[i])
+                    # ax.errorbar(sortedxpicks,sortedtpicks, yerr=sortederrpicks, marker='o', linestyle='-',label = self.stNames[i])
                     ax.scatter(self.sources[i], self.sources[i]*0, marker = "*", s = 150, zorder = 99)
 
                 ax.invert_yaxis()

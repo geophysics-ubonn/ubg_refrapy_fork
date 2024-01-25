@@ -8,8 +8,9 @@
 - default clip + positive fill wiggle display
 - apply display (clip, time, gain, wiggle) changes to all opened shots
 - add option to set maximum displayed time for all shots in 'plot options'
+- add error (defined either relative or absolute) to sgt file
 - less pop up messages to improve productivity
-- + other bug corrections
+- and some other bug corrections
 
 ## Summary
 
