@@ -7,18 +7,17 @@ from matplotlib import pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 from matplotlib.colors import is_color_like
 from matplotlib import lines, markers
-from tkinter import Tk, Toplevel, Frame, Button, Label, filedialog, messagebox, PhotoImage, simpledialog
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+from tkinter import Tk, Toplevel, Frame, Button, Label, filedialog, messagebox, PhotoImage, simpledialog, Entry
 from os import path, makedirs, getcwd
 from obspy import read
 from obspy.signal.filter import lowpass, highpass
 from scipy.signal import resample
 from scipy.interpolate import interp1d
-from numpy import array, where, polyfit, isclose
+from numpy import array, where, polyfit, isclose, unique
 from Pmw import initialise, Balloon
 import warnings
-
 from tqdm import tqdm
-
 
 warnings.filterwarnings('ignore')
 
@@ -28,7 +27,7 @@ class Refrapick(Tk):
         
         super().__init__()
         self.geometry("1600x900")
-        self.title('Refrapy - Refrapick v2.0.0 - SP fork')
+        self.title('Refrapy - Refrapick v2.1.0 - SP fork')
         self.configure(bg = "#F0F0F0")
         self.resizable(0,0)
 
@@ -41,7 +40,7 @@ class Refrapick(Tk):
         labelPhoto.image = photo
         labelPhoto.grid(row=0, column =0, sticky="W")
         self.statusLabel = Label(frame_toolbar, text = "Create or load a project to start", font=("Arial", 11))
-        self.statusLabel.grid(row = 0, column = 33, sticky = "W")
+        self.statusLabel.grid(row = 0, column = 34, sticky = "W")
         initialise(self)
         self.ico_openWaveform = PhotoImage(file="%s/images/abrir.gif"%getcwd())
         self.ico_savePicks = PhotoImage(file="%s/images/salvar.gif"%getcwd())
@@ -75,6 +74,7 @@ class Refrapick(Tk):
         self.ico_restoreTraces = PhotoImage(file="%s/images/ico_restoreTraces.gif"%getcwd())
         self.ico_help = PhotoImage(file="%s/images/ico_help.gif"%getcwd())
         self.ico_plotOptions = PhotoImage(file="%s/images/ico_plotOptions.gif"%getcwd())
+        self.ico_errorOptions = PhotoImage(file="%s/images/ico_error.png"%getcwd())
         
         bt = Button(frame_toolbar,image = self.ico_newProject,command = self.createProject,width=25)
         bt.grid(row = 0, column = 1, sticky="W")
@@ -175,64 +175,69 @@ class Refrapick(Tk):
         bt.grid(row = 0, column = 20, sticky="W")
         bl = Balloon(self)
         bl.bind(bt,"Enable/disable pick mode")
-        
-        bt = Button(frame_toolbar,image=self.ico_connectPick,command = self.drawPicksLine,width=25)
+
+        bt = Button(frame_toolbar,image=self.ico_errorOptions,command = self.setError,width=25)
         bt.grid(row = 0, column = 21, sticky="W")
+        bl = Balloon(self)
+        bl.bind(bt,"Set error parameters")
+                
+        bt = Button(frame_toolbar,image=self.ico_connectPick,command = self.drawPicksLine,width=25)
+        bt.grid(row = 0, column = 22, sticky="W")
         bl = Balloon(self)
         bl.bind(bt,"Connect/disconnect picks")
         
         bt = Button(frame_toolbar,image=self.ico_clearPicks,command = self.clearPicks,width=25)
-        bt.grid(row = 0, column = 22, sticky="W")
+        bt.grid(row = 0, column = 23, sticky="W")
         bl = Balloon(self)
         bl.bind(bt,"Clear picks")
 
         bt = Button(frame_toolbar,image=self.ico_allPicks,command = self.allPicks,width=25)
-        bt.grid(row = 0, column = 23, sticky="W")
+        bt.grid(row = 0, column = 24, sticky="W")
         bl = Balloon(self)
         bl.bind(bt,"Show/hide traveltimes picks from other files")
 
         bt = Button(frame_toolbar,image = self.ico_savePicks, command = self.savePicks,width=25)
-        bt.grid(row = 0, column = 24, sticky="W")
+        bt.grid(row = 0, column = 25, sticky="W")
         bl = Balloon(self)
         bl.bind(bt,"Save pick file")
         
         bt = Button(frame_toolbar,image=self.ico_loadPicks,command = self.loadPicks,width=25)
-        bt.grid(row = 0, column = 25, sticky="W")
+        bt.grid(row = 0, column = 26, sticky="W")
         bl = Balloon(self)
         bl.bind(bt,"Load pick file)")
 
         bt = Button(frame_toolbar,image=self.ico_velMode,command = self.appVelMode,width=25)
-        bt.grid(row = 0, column = 26, sticky="W")
+        bt.grid(row = 0, column = 27, sticky="W")
         bl = Balloon(self)
         bl.bind(bt,"Enable/disable apparent velocity mode")
         
         bt = Button(frame_toolbar,image = self.ico_tt,command = self.viewTraveltimes,width=25)
-        bt.grid(row = 0, column = 27, sticky="W")
+        bt.grid(row = 0, column = 28, sticky="W")
         bl = Balloon(self)
         bl.bind(bt,"View observed traveltimes")
 
         bt = Button(frame_toolbar,image=self.ico_survey,command = self.viewSurvey,width=25)
-        bt.grid(row = 0, column = 28, sticky="W")
+        bt.grid(row = 0, column = 29, sticky="W")
         bl = Balloon(self)
         bl.bind(bt,"View survey geometry")
 
         bt = Button(frame_toolbar,image = self.ico_plotOptions,command = self.plotOptions,width=25)
-        bt.grid(row = 0, column = 29, sticky="W")
+        bt.grid(row = 0, column = 30, sticky="W")
         bl = Balloon(self)
         bl.bind(bt,"Plot options")
         
         bt = Button(frame_toolbar,image = self.ico_options,command = self.options,width=25)
-        bt.grid(row = 0, column = 30, sticky="W")
+        bt.grid(row = 0, column = 31, sticky="W")
         bl = Balloon(self)
         bl.bind(bt,"Edit acquisition parameters")
         
         bt = Button(frame_toolbar,image = self.ico_reset,command = self.reset,width=25)
-        bt.grid(row = 0, column = 31, sticky="W")
+        bt.grid(row = 0, column = 32, sticky="W")
         bl = Balloon(self)
         bl.bind(bt,"Reset all")
 
         bt = Button(frame_toolbar,image=self.ico_help,command = self.help,width=25)
-        bt.grid(row = 0, column = 32, sticky="W")
+        bt.grid(row = 0, column = 33, sticky="W")
         bl = Balloon(self)
         bl.bind(bt,"Help")
 
@@ -266,6 +271,7 @@ class Refrapick(Tk):
         self.tracesData = []
         self.nchannels = []
         self.tracesTime = []
+        self.errors = [0.1, True, 0.5e-3, 5e-3]
         self.currentSt = 0
         self.fillSide = 1
         self.amplitudeClip = 0
@@ -681,11 +687,11 @@ class Refrapick(Tk):
         plotOptionsWindow = Toplevel(self)
         plotOptionsWindow.title('Refrapick - Plot options')
         plotOptionsWindow.configure(bg = "#F0F0F0")
-        plotOptionsWindow.geometry("350x520")
+        # plotOptionsWindow.geometry("350x520")
         plotOptionsWindow.resizable(0,0)
         # plotOptionsWindow.iconbitmap("%s/images/ico_refrapy.ico"%getcwd())
         Label(plotOptionsWindow, text = "Plot options",font=("Arial", 11)).grid(row=0,column=0,sticky="EW",pady=5,padx=65)
-        Button(plotOptionsWindow,text="Change maximum time", command = editMaxTime, width = 30).grid(row = 1, column = 0,pady=5,padx=65)
+        Button(plotOptionsWindow,text="Change maximum display time", command = editMaxTime, width = 30).grid(row = 1, column = 0,pady=5,padx=65)
         Button(plotOptionsWindow,text="Change trace color", command = editTraceColor, width = 30).grid(row = 2, column = 0,pady=5,padx=65)
         Button(plotOptionsWindow,text="Change fill color", command = editFillColor, width = 30).grid(row = 3, column = 0,pady=5,padx=65)
         Button(plotOptionsWindow,text="Change background color", command = editBackgroundColor, width = 30).grid(row = 4, column = 0,pady=5,padx=65)
@@ -786,7 +792,7 @@ class Refrapick(Tk):
             optionsWindow = Toplevel(self)
             optionsWindow.title('Refrapick - Edit parameters')
             optionsWindow.configure(bg = "#F0F0F0")
-            optionsWindow.geometry("350x170")
+            # optionsWindow.geometry("350x170")
             optionsWindow.resizable(0,0)
             # optionsWindow.iconbitmap("%s/images/ico_refrapy.ico"%getcwd())
             Label(optionsWindow, text = "Editing parameters in %s"%self.stNames[self.currentSt],font=("Arial", 11)).grid(row=0,column=0,sticky="EW",pady=5,padx=65)
@@ -892,10 +898,32 @@ class Refrapick(Tk):
 
                 if self.sts: n = len(self.sts)
                 else: n = 0
-                
-                for i, file in tqdm(enumerate(files), total=len(files), desc="Reading files"):
 
-                    st = read(file)
+                # Handle SU file containing multiple shots
+                flag_long_su = False
+                if len(files) == 1:
+                    _, extension = path.splitext(files[0])
+                    if extension.lower() == '.su':
+                        st = read(files[0])
+
+                        # Extract the original_field_record_number from each trace
+                        original_field_record_numbers = [trace.stats.su.trace_header.original_field_record_number for trace in st]
+
+                        # Find the unique original_field_record_numbers
+                        unique_original_field_record_numbers = unique(original_field_record_numbers)
+
+                        if len(unique_original_field_record_numbers) > 1:
+                            # Create a list of lists of traces with the same original_field_record_number
+                            st_all = [[tr for tr in st if tr.stats.su.trace_header.original_field_record_number == original_field_record_number] for original_field_record_number in unique_original_field_record_numbers]
+                            flag_long_su = True
+                            files = [files[0]]*len(st_all)
+
+                for i, file in tqdm(enumerate(files), total=len(files), desc="Reading files"):
+                    
+                    if flag_long_su == True:
+                        st = st_all[i]
+                    else:
+                        st = read(file)
 
                     if st[0].stats._format == "SEG2":
                         
@@ -933,21 +961,13 @@ class Refrapick(Tk):
                     else:
                         
                         dx = simpledialog.askfloat("Refrapick","Enter the receiver spacing (in meters) for %s:"%path.basename(file))
-                   
-                        if dx == None or dx <= 0: dx = 1; messagebox.showinfo('Refrapick','No valid dx entered: dx = 1 m will be assigned to %s'%path.basename(file))  
-                            
+                        if dx == None or dx <= 0: dx = 1; messagebox.showinfo('Refrapick','No valid dx entered: dx = 1 m will be assigned to %s'%path.basename(file))     
                         x1 = simpledialog.askfloat("Refrapick","Enter the first receiver position (in meters) for %s:"%path.basename(file))
-
                         if x1 == None: x1 = 0; messagebox.showinfo('Refrapick','No x1 value entered: x1 = 0 m will be assigned to %s'%path.basename(file))
-                        
                         source = simpledialog.askfloat("Refrapick","Enter the source position (in meters) for %s:"%path.basename(file))
-
                         if source == None: source = -1; messagebox.showinfo('Refrapick','No source value entered: source = -1 m will be assigned to %s'%path.basename(file))
-
                         delay = simpledialog.askfloat("Refrapick","Enter the delay for shot time correction (in seconds) for %s:"%path.basename(file))
-
                         if delay == None: delay = 0; messagebox.showinfo('Refrapick','No delay time entered: delay = 0 s will be used for %s'%path.basename(file))
-                        
                         xend = x1+dx*(len(st)-1)
 
                     self.dxs.append(dx)
@@ -974,7 +994,7 @@ class Refrapick(Tk):
                     ax.set_facecolor(self.backgroundColor)
 
                     # Create an initial inset axes for the zoom window
-                    axin = ax.inset_axes([0.5-0.3/2, 0.3-0.3/2, 0.3, 0.3])
+                    axin = ax.inset_axes([0.5-0.75/2, -0.075, 0.75, 0.6])
                     # Set the color of the axes, ticks, and tick labels to blue
                     axin.spines['bottom'].set_color('blue')
                     axin.spines['top'].set_color('blue') 
@@ -1063,10 +1083,13 @@ class Refrapick(Tk):
                     axin.set_xlabel("RECEIVER POSITION [m]")
 
                     if self.grid: ax.grid(lw = .5, alpha = .5, c = self.gridColor, ls = self.gridStyle)
-                    ax.set_title(path.basename(file)+" | source = %.2f m | dx = %.2f m | traces = %d | sampling = %d Hz | gain = %d"%(source,dx,
-                                                                                                                                        self.nchannels[i],
-                                                                                                                                       self.originalSamplingRates[i],
-                                                                                                                                       self.gains[i]))
+                    ax.set_title("shot %d/%d | %s | source = %.2f m | dx = %.2f m | traces = %d | sampling = %d Hz | gain = %d"%(i+n+1,
+                                                                                                                                     n+len(files),
+                                                                                                                                     path.basename(file),
+                                                                                                                                     source,dx,
+                                                                                                                                     self.nchannels[i],
+                                                                                                                                     self.originalSamplingRates[i],
+                                                                                                                                     self.gains[i]))
                     self.stNames.append(path.basename(file))
 
                     if self.maxTime:
@@ -1092,8 +1115,16 @@ class Refrapick(Tk):
                 self.statusLabel.configure(text="Waveform(s) ready!",font=("Arial", 11))
                 self.currentSt = 0
             
-                if n == 0: print('Refrapick: %d file(s) loaded succesfully!' % len(files))
-                else: print('Refrapick: %d new file(s) loaded succesfully!' % len(files))
+                if n == 0: 
+                    if flag_long_su == True:
+                        print('Refrapick: %d shots loaded succesfully from SU file!' % len(st_all))
+                    else:
+                        print('Refrapick: %d file(s) loaded succesfully!' % len(files))
+                else: 
+                    if flag_long_su == True:
+                        print('Refrapick: %d new shots loaded succesfully from SU file!' % len(st_all))
+                    else:
+                        print('Refrapick: %d new file(s) loaded succesfully!' % len(files))
 
     def help(self):
 
@@ -1171,7 +1202,10 @@ E-mail: vjs279@hotmail.com
 
     def updatePlotTitle(self):
 
-        if self.filters[self.currentSt][1] and self.filters[self.currentSt][0]: self.axs[self.currentSt].set_title("%s | source = %.2f m | dx = %.2f m | traces = %d |sampling = %d Hz | filters = %.2f Hz - %.2f Hz | gain = %d"%(self.stNames[self.currentSt],
+        if self.filters[self.currentSt][1] and self.filters[self.currentSt][0]: self.axs[self.currentSt].set_title("shot %d/%d | %s | source = %.2f m | dx = %.2f m | traces = %d |sampling = %d Hz | filters = %.2f Hz - %.2f Hz | gain = %d"%(
+                                                                                                                                         self.currentSt+1,
+                                                                                                                                         len(self.sts),
+                                                                                                                                         self.stNames[self.currentSt],
                                                                                                                                          self.sources[self.currentSt],
                                                                                                                                          self.dxs[self.currentSt],
                                                                                                                                          self.nchannels[self.currentSt],
@@ -1180,7 +1214,10 @@ E-mail: vjs279@hotmail.com
                                                                                                                                          self.filters[self.currentSt][1],
                                                                                                                                          self.gains[self.currentSt]))
                     
-        elif self.filters[self.currentSt][1] and not self.filters[self.currentSt][0]: self.axs[self.currentSt].set_title("%s | source = %.2f m | dx = %.2f m | traces = %d |sampling = %d Hz | filters = %.2f Hz (low-pass) | gain = %d"%(self.stNames[self.currentSt],
+        elif self.filters[self.currentSt][1] and not self.filters[self.currentSt][0]: self.axs[self.currentSt].set_title("shot %d/%d | %s | source = %.2f m | dx = %.2f m | traces = %d |sampling = %d Hz | filters = %.2f Hz (low-pass) | gain = %d"%(
+                                                                                                                                    self.currentSt+1,
+                                                                                                                                    len(self.sts),
+                                                                                                                                    self.stNames[self.currentSt],
                                                                                                                                     self.sources[self.currentSt],
                                                                                                                                     self.dxs[self.currentSt],
                                                                                                                                     self.nchannels[self.currentSt],
@@ -1188,7 +1225,10 @@ E-mail: vjs279@hotmail.com
                                                                                                                                     self.filters[self.currentSt][1],
                                                                                                                                     self.gains[self.currentSt]))
         
-        elif self.filters[self.currentSt][0] and not self.filters[self.currentSt][1]: self.axs[self.currentSt].set_title("%s | source = %.2f m | dx = %.2f m | traces = %d | sampling = %d Hz | filters = %.2f Hz (high-pass) | gain = %d"%(self.stNames[self.currentSt],
+        elif self.filters[self.currentSt][0] and not self.filters[self.currentSt][1]: self.axs[self.currentSt].set_title("shot %d/%d | %s | source = %.2f m | dx = %.2f m | traces = %d | sampling = %d Hz | filters = %.2f Hz (high-pass) | gain = %d"%(
+                                                                                                                                    self.currentSt+1,
+                                                                                                                                    len(self.sts),
+                                                                                                                                    self.stNames[self.currentSt],
                                                                                                                                     self.sources[self.currentSt],
                                                                                                                                     self.dxs[self.currentSt],
                                                                                                                                     self.nchannels[self.currentSt],
@@ -1196,7 +1236,10 @@ E-mail: vjs279@hotmail.com
                                                                                                                                     self.filters[self.currentSt][0],
                                                                                                                                     self.gains[self.currentSt]))
             
-        else: self.axs[self.currentSt].set_title("%s | source = %.2f m | dx = %.2f m | traces = %d | sampling = %d Hz | gain = %d"%(self.stNames[self.currentSt],
+        else: self.axs[self.currentSt].set_title("shot %d/%d | %s | source = %.2f m | dx = %.2f m | traces = %d | sampling = %d Hz | gain = %d"%(
+                                                                                                                                     self.currentSt+1,
+                                                                                                                                     len(self.sts),
+                                                                                                                                     self.stNames[self.currentSt],
                                                                                                                                      self.sources[self.currentSt],
                                                                                                                                      self.dxs[self.currentSt],
                                                                                                                                      self.nchannels[self.currentSt],
@@ -1213,6 +1256,15 @@ E-mail: vjs279@hotmail.com
             if newSamplingFreq:
 
                 if newSamplingFreq >= 100:
+
+                    for i in range(len(self.sts[self.currentSt])):
+                    
+                        if len(self.fillArts[self.currentSt]) > i:
+                            self.fillArts[self.currentSt][:].pop(i).remove()
+                            self.fillArtsIn[self.currentSt][:].pop(i).remove()
+                            
+                    del self.fillArts[self.currentSt][:]
+                    del self.fillArtsIn[self.currentSt][:]
                 
                     for i, tr in enumerate(self.tracesData[self.currentSt]):
 
@@ -1221,19 +1273,40 @@ E-mail: vjs279@hotmail.com
                         new_data, new_time = resample(tr, n, self.tracesTime[self.currentSt][i])
                         self.tracesData[self.currentSt][i] = new_data
                         self.tracesTime[self.currentSt][i] = new_time
+
                         self.tracesArts[self.currentSt][i].set_xdata(new_data/max(new_data)*self.gains[self.currentSt]+self.xalls[self.currentSt][i])
                         self.tracesArts[self.currentSt][i].set_ydata(new_time)
+
                         self.tracesArtsIn[self.currentSt][i].set_xdata(new_data/max(new_data)*self.gains[self.currentSt]+self.xalls[self.currentSt][i])
                         self.tracesArtsIn[self.currentSt][i].set_ydata(new_time)
+
+                        tr = self.tracesArts[self.currentSt][i]
+                        tr.get_xdata()[tr.get_xdata() < self.xalls[self.currentSt][i]-((self.dxs[self.currentSt]/2)*0.9)] = self.xalls[self.currentSt][i]-((self.dxs[self.currentSt]/2)*0.9)
+                        tr.get_xdata()[tr.get_xdata() > self.xalls[self.currentSt][i]+((self.dxs[self.currentSt]/2)*0.9)] = self.xalls[self.currentSt][i]+((self.dxs[self.currentSt]/2)*0.9)
+                        tr.set_xdata(tr.get_xdata())
+
+                        tr = self.tracesArtsIn[self.currentSt][i]
+                        tr.get_xdata()[tr.get_xdata() < self.xalls[self.currentSt][i]-((self.dxs[self.currentSt]/2)*0.9)] = self.xalls[self.currentSt][i]-((self.dxs[self.currentSt]/2)*0.9)
+                        tr.get_xdata()[tr.get_xdata() > self.xalls[self.currentSt][i]+((self.dxs[self.currentSt]/2)*0.9)] = self.xalls[self.currentSt][i]+((self.dxs[self.currentSt]/2)*0.9)
+                        tr.set_xdata(tr.get_xdata())
+
+                        fill = self.axs[self.currentSt].fill_betweenx(self.tracesArts[self.currentSt][i].get_ydata(),
+                                        self.xalls[self.currentSt][i],
+                                        self.tracesArts[self.currentSt][i].get_xdata(),
+                                        where = self.tracesArts[self.currentSt][i].get_xdata() >= self.xalls[self.currentSt][i],
+                                        color=self.fillColor)     
+                        self.fillArts[self.currentSt].append(fill)
+                        
+                        fillIn = self.axins[self.currentSt].fill_betweenx(self.tracesArtsIn[self.currentSt][i].get_ydata(),
+                                        self.xalls[self.currentSt][i],
+                                        self.tracesArtsIn[self.currentSt][i].get_xdata(),
+                                        where = self.tracesArtsIn[self.currentSt][i].get_xdata() >= self.xalls[self.currentSt][i],
+                                        color=self.fillColor)     
+                        self.fillArtsIn[self.currentSt].append(fillIn)
 
                     self.samplingRates[self.currentSt] = newSamplingFreq
 
                     self.updatePlotTitle()
-                    
-                    if self.fillSide == 0: self.wigglesOnly()
-                    elif self.fillSide == -1: self.fillNegative()
-
-                    self.clipAmplitudes()
                     
                 else: messagebox.showerror('Refrapick','Enter a value greater or equal than 100 Hz!')
                 
@@ -1256,17 +1329,22 @@ E-mail: vjs279@hotmail.com
                     self.tracesArtsIn[self.currentSt][i].set_xdata(self.tracesData[self.currentSt][i]/max(self.tracesData[self.currentSt][i])*self.gains[self.currentSt]+self.xalls[self.currentSt][i])
                     self.tracesArtsIn[self.currentSt][i].set_ydata(self.tracesTime[self.currentSt][i])
 
+                    tr = self.tracesArts[self.currentSt][i]
+                    tr.get_xdata()[tr.get_xdata() < self.xalls[self.currentSt][i]-((self.dxs[self.currentSt]/2)*0.9)] = self.xalls[self.currentSt][i]-((self.dxs[self.currentSt]/2)*0.9)
+                    tr.get_xdata()[tr.get_xdata() > self.xalls[self.currentSt][i]+((self.dxs[self.currentSt]/2)*0.9)] = self.xalls[self.currentSt][i]+((self.dxs[self.currentSt]/2)*0.9)
+                    tr.set_xdata(tr.get_xdata())
+
+                    tr = self.tracesArtsIn[self.currentSt][i]
+                    tr.get_xdata()[tr.get_xdata() < self.xalls[self.currentSt][i]-((self.dxs[self.currentSt]/2)*0.9)] = self.xalls[self.currentSt][i]-((self.dxs[self.currentSt]/2)*0.9)
+                    tr.get_xdata()[tr.get_xdata() > self.xalls[self.currentSt][i]+((self.dxs[self.currentSt]/2)*0.9)] = self.xalls[self.currentSt][i]+((self.dxs[self.currentSt]/2)*0.9)
+                    tr.set_xdata(tr.get_xdata())
+
                 self.axs[self.currentSt].set_ylim(min(self.tracesArts[self.currentSt][0].get_ydata()),
                                                       max(self.tracesArts[self.currentSt][0].get_ydata()))
                 
                 if self.invertedTimeAxis[self.currentSt] == 1: self.axs[self.currentSt].invert_yaxis()
 
                 self.figs[self.currentSt].canvas.draw_idle()
-                
-                if self.fillSide == 0: self.wigglesOnly()
-                elif self.fillSide == -1: self.fillNegative()
-
-                self.clipAmplitudes()
 
     def clipAmplitudes(self):
 
@@ -1380,6 +1458,7 @@ E-mail: vjs279@hotmail.com
                                 where = self.tracesArts[self.currentSt][i].get_xdata() >= self.xalls[self.currentSt][i],
                                 color=self.fillColor)     
                 self.fillArts[self.currentSt].append(fill)
+                
                 fillIn = self.axins[self.currentSt].fill_betweenx(self.tracesArtsIn[self.currentSt][i].get_ydata(),
                                 self.xalls[self.currentSt][i],
                                 self.tracesArtsIn[self.currentSt][i].get_xdata(),
@@ -1567,20 +1646,49 @@ E-mail: vjs279@hotmail.com
                 self.filters[self.currentSt][0] = hp
 
             if lp or hp:
+
+                for i in range(len(self.sts[self.currentSt])):
+                    
+                    if len(self.fillArts[self.currentSt]) > i:
+                        self.fillArts[self.currentSt][:].pop(i).remove()
+                        self.fillArtsIn[self.currentSt][:].pop(i).remove()
+                        
+                del self.fillArts[self.currentSt][:]
+                del self.fillArtsIn[self.currentSt][:]
                 
                 for i, tr in enumerate(self.tracesArts[self.currentSt]):
 
                         amp = self.tracesData[self.currentSt][i]
                         tr.set_xdata(amp/max(amp)*self.gains[self.currentSt]+self.xalls[self.currentSt][i])
 
+                        tr.get_xdata()[tr.get_xdata() < self.xalls[self.currentSt][i]-((self.dxs[self.currentSt]/2)*0.9)] = self.xalls[self.currentSt][i]-((self.dxs[self.currentSt]/2)*0.9)
+                        tr.get_xdata()[tr.get_xdata() > self.xalls[self.currentSt][i]+((self.dxs[self.currentSt]/2)*0.9)] = self.xalls[self.currentSt][i]+((self.dxs[self.currentSt]/2)*0.9)
+                        tr.set_xdata(tr.get_xdata())
+
                 for i, tr in enumerate(self.tracesArtsIn[self.currentSt]):
 
                         amp = self.tracesData[self.currentSt][i]
                         tr.set_xdata(amp/max(amp)*self.gains[self.currentSt]+self.xalls[self.currentSt][i])
 
-                if self.fillSide == 1 or self.fillSide == -1: self.wigglesOnly()
+                        tr.get_xdata()[tr.get_xdata() < self.xalls[self.currentSt][i]-((self.dxs[self.currentSt]/2)*0.9)] = self.xalls[self.currentSt][i]-((self.dxs[self.currentSt]/2)*0.9)
+                        tr.get_xdata()[tr.get_xdata() > self.xalls[self.currentSt][i]+((self.dxs[self.currentSt]/2)*0.9)] = self.xalls[self.currentSt][i]+((self.dxs[self.currentSt]/2)*0.9)
+                        tr.set_xdata(tr.get_xdata())
 
-                self.clipAmplitudes()
+                for i in range(len(self.sts[self.currentSt])):
+
+                    fill = self.axs[self.currentSt].fill_betweenx(self.tracesArts[self.currentSt][i].get_ydata(),
+                                    self.xalls[self.currentSt][i],
+                                    self.tracesArts[self.currentSt][i].get_xdata(),
+                                    where = self.tracesArts[self.currentSt][i].get_xdata() >= self.xalls[self.currentSt][i],
+                                    color=self.fillColor)     
+                    self.fillArts[self.currentSt].append(fill)
+                    
+                    fillIn = self.axins[self.currentSt].fill_betweenx(self.tracesArtsIn[self.currentSt][i].get_ydata(),
+                                    self.xalls[self.currentSt][i],
+                                    self.tracesArtsIn[self.currentSt][i].get_xdata(),
+                                    where = self.tracesArtsIn[self.currentSt][i].get_xdata() >= self.xalls[self.currentSt][i],
+                                    color=self.fillColor)     
+                    self.fillArtsIn[self.currentSt].append(fillIn)
 
                 self.updatePlotTitle()
 
@@ -1591,6 +1699,15 @@ E-mail: vjs279@hotmail.com
             if messagebox.askyesno("Refrapick", "Restore default traces in %s?"%self.stNames[self.currentSt]):
 
                 self.gains[self.currentSt] = 1
+
+                for i in range(len(self.sts[self.currentSt])):
+                    
+                    if len(self.fillArts[self.currentSt]) > i:
+                        self.fillArts[self.currentSt][:].pop(i).remove()
+                        self.fillArtsIn[self.currentSt][:].pop(i).remove()
+                        
+                del self.fillArts[self.currentSt][:]
+                del self.fillArtsIn[self.currentSt][:]
                 
                 for i, tr in enumerate(self.tracesArts[self.currentSt]):
 
@@ -1600,6 +1717,10 @@ E-mail: vjs279@hotmail.com
                     self.tracesData[self.currentSt][i] = amp
                     self.tracesTime[self.currentSt][i] = self.originalTracesTimes[self.currentSt][i]
 
+                    tr.get_xdata()[tr.get_xdata() < self.xalls[self.currentSt][i]-((self.dxs[self.currentSt]/2)*0.9)] = self.xalls[self.currentSt][i]-((self.dxs[self.currentSt]/2)*0.9)
+                    tr.get_xdata()[tr.get_xdata() > self.xalls[self.currentSt][i]+((self.dxs[self.currentSt]/2)*0.9)] = self.xalls[self.currentSt][i]+((self.dxs[self.currentSt]/2)*0.9)
+                    tr.set_xdata(tr.get_xdata())
+
                 for i, tr in enumerate(self.tracesArtsIn[self.currentSt]):
 
                     amp = self.originalTracesData[self.currentSt][i]
@@ -1608,12 +1729,39 @@ E-mail: vjs279@hotmail.com
                     self.tracesData[self.currentSt][i] = amp
                     self.tracesTime[self.currentSt][i] = self.originalTracesTimes[self.currentSt][i]
 
+                    tr.get_xdata()[tr.get_xdata() < self.xalls[self.currentSt][i]-((self.dxs[self.currentSt]/2)*0.9)] = self.xalls[self.currentSt][i]-((self.dxs[self.currentSt]/2)*0.9)
+                    tr.get_xdata()[tr.get_xdata() > self.xalls[self.currentSt][i]+((self.dxs[self.currentSt]/2)*0.9)] = self.xalls[self.currentSt][i]+((self.dxs[self.currentSt]/2)*0.9)
+                    tr.set_xdata(tr.get_xdata())
+
+                for i in range(len(self.sts[self.currentSt])):
+
+                    fill = self.axs[self.currentSt].fill_betweenx(self.tracesArts[self.currentSt][i].get_ydata(),
+                                    self.xalls[self.currentSt][i],
+                                    self.tracesArts[self.currentSt][i].get_xdata(),
+                                    where = self.tracesArts[self.currentSt][i].get_xdata() >= self.xalls[self.currentSt][i],
+                                    color=self.fillColor)     
+                    self.fillArts[self.currentSt].append(fill)
+                    
+                    fillIn = self.axins[self.currentSt].fill_betweenx(self.tracesArtsIn[self.currentSt][i].get_ydata(),
+                                    self.xalls[self.currentSt][i],
+                                    self.tracesArtsIn[self.currentSt][i].get_xdata(),
+                                    where = self.tracesArtsIn[self.currentSt][i].get_xdata() >= self.xalls[self.currentSt][i],
+                                    color=self.fillColor)     
+                    self.fillArtsIn[self.currentSt].append(fillIn)
+
                 self.filters[self.currentSt][0] = False
                 self.filters[self.currentSt][1] = False
                 self.samplingRates[self.currentSt] = self.originalSamplingRates[self.currentSt]
-                
-                self.axs[self.currentSt].set_title("%s | dx = %.2f m | source = %.2f m | sampling = %d Hz | gain = %d"%(self.stNames[self.currentSt],self.dxs[self.currentSt],self.sources[self.currentSt],
-                                                                                                                           self.originalSamplingRates[self.currentSt],self.gains[self.currentSt]))
+
+                self.axs[self.currentSt].set_title("shot %d/%d | %s | source = %.2f m | dx = %.2f m | traces = %d | sampling = %d Hz | gain = %d"%(
+                                                                                                                                     self.currentSt+1,
+                                                                                                                                     len(self.sts),
+                                                                                                                                     self.stNames[self.currentSt],
+                                                                                                                                     self.sources[self.currentSt],
+                                                                                                                                     self.dxs[self.currentSt],
+                                                                                                                                     self.nchannels[self.currentSt],
+                                                                                                                                     self.originalSamplingRates[self.currentSt],
+                                                                                                                                     self.gains[self.currentSt]))
 
                 if self.invertedTimeAxis[self.currentSt] == 1:
                     
@@ -1625,14 +1773,8 @@ E-mail: vjs279@hotmail.com
                 self.axs[self.currentSt].set_xlim(self.x1s[self.currentSt]-self.dxs[self.currentSt]/2, self.xends[self.currentSt]+self.dxs[self.currentSt]/2)
                 self.figs[self.currentSt].canvas.draw_idle()
                 
-                if self.fillSide == 1 or self.fillSide == -1: self.wigglesOnly()
-                
-                self.clipAmplitudes()   
-
-
     def pick(self):
 
-        from mpl_toolkits.axes_grid1.inset_locator import inset_axes
         self.figs[self.currentSt].canvas.get_tk_widget().config(cursor='cross')
 
         if self.sts:
@@ -1653,8 +1795,8 @@ E-mail: vjs279@hotmail.com
                         return
 
                     # Update the limits of the zoom window to zoom in on the plot around the mouse pointer
-                    time_factor = 0.01  # The time window will be 0.01 x the total time of the plot
-                    self.axins[self.currentSt].set_xlim(event.xdata - self.dxs[self.currentSt]*2, event.xdata + self.dxs[self.currentSt]*2)
+                    time_factor = 0.02  # The time window will be 0.01 x the total time of the plot
+                    self.axins[self.currentSt].set_xlim(event.xdata - self.dxs[self.currentSt]*1.33, event.xdata + self.dxs[self.currentSt]*1.33)
                     self.axins[self.currentSt].set_ylim(event.ydata - self.originalMaxTime*time_factor, event.ydata + self.originalMaxTime*time_factor)
 
                     # Reverse the y-axis of the inset
@@ -1667,24 +1809,24 @@ E-mail: vjs279@hotmail.com
                     self.figs[self.currentSt].canvas.draw_idle()
                     self.figs[self.currentSt].canvas.get_tk_widget().config(cursor='cross')
 
-                def errorPick(t,err=0.1,relative_error=True,minAbsErr=0.5e-3,maxAbsErr=5e-3,maxRelErr=None):
+                def errorPick(t,err=0.1,is_relative=True,min_abs_err=0.5e-3,max_abs_err=5e-3,max_rel_err=None):
                     # t: time (in s)
                     # err: error (in s or fraction of t)
                     # absolute_error: if True, use err as absolute error (in s), else use err as relative error (in fraction of t)
-                    # minAbsErr: minimum absolute error (in s)
-                    # maxAbsErr: maximum absolute error (in s)
-                    # maxRelErr: maximum relative error (in fraction of t)
+                    # min_abs_err: minimum absolute error (in s)
+                    # max_abs_err: maximum absolute error (in s)
+                    # max_rel_err: maximum relative error (in fraction of t)
                         
-                        if relative_error:
+                        if is_relative:
                             err = err*t
-                            if maxAbsErr is not None:
-                                if err>maxAbsErr: err = maxAbsErr
+                            if max_abs_err is not None:
+                                if err>max_abs_err: err = max_abs_err
                             
-                            if minAbsErr is not None:
-                                if err<minAbsErr: err = minAbsErr
+                            if min_abs_err is not None:
+                                if err<min_abs_err: err = min_abs_err
                         else:
-                            if maxRelErr is not None:
-                                if err>maxRelErr*t: err = maxRelErr*t
+                            if max_rel_err is not None:
+                                if err>max_rel_err*t: err = max_rel_err*t
 
                         return err
 
@@ -1699,7 +1841,7 @@ E-mail: vjs279@hotmail.com
                         self.picksArtsIn[self.currentSt].append(pickline_inset)
                         self.xpicks[self.currentSt].append(x[j])
                         self.tpicks[self.currentSt].append(t[j])
-                        self.errpicks[self.currentSt].append(errorPick(t[j]))
+                        self.errpicks[self.currentSt].append(errorPick(t[j],*self.errors))
 
                     if self.pickLineArts[self.currentSt]:
                         
@@ -2011,7 +2153,63 @@ E-mail: vjs279@hotmail.com
                         print("Refrapick: The pick file has been saved!")
                     else:
                         print("Refrapick: No pick file saved!")
-                
+
+    def setError(self):
+        root = Tk()
+        root.title("Refrapick - Error parameters")
+        root.withdraw()  # hide the main window
+        dialog = self.ParameterDialog(root, self)
+        if dialog.result is not None: self.errors = dialog.result 
+
+    class ParameterDialog(simpledialog.Dialog):
+        def __init__(self, parent, main_class):  # accept main_class as an argument
+            self.main_class = main_class  # store main_class       
+            super().__init__(parent)
+
+        def body(self, master):
+            Label(master, text="Picking error (in s or fraction of time):").grid(row=0)
+            Label(master, text="Is error relative ? (True/False):").grid(row=1)
+            Label(master, text="Min. absolute error (in s):").grid(row=2)
+            Label(master, text="Max. absolute error (in s):").grid(row=3)
+
+            self.e1 = Entry(master)
+            self.e2 = Entry(master)
+            self.e3 = Entry(master)
+            self.e4 = Entry(master)
+
+            # Set default values
+            self.e1.insert(0, self.main_class.errors[0] if self.main_class.errors[0] is not None else "")
+            self.e2.insert(0, self.main_class.errors[1] if self.main_class.errors[1] is not None else "")
+            self.e3.insert(0, self.main_class.errors[2] if self.main_class.errors[2] is not None else "")
+            self.e4.insert(0, self.main_class.errors[3] if self.main_class.errors[3] is not None else "")
+
+            self.e1.grid(row=0, column=1)
+            self.e2.grid(row=1, column=1)
+            self.e3.grid(row=2, column=1)
+            self.e4.grid(row=3, column=1)
+
+            return self.e1  # initial focus
+        
+        def grab_set(self):
+            # Call the parent class's grab_set method
+            super().grab_set()
+
+            # Center the window
+            window_width = self.winfo_reqwidth()
+            window_height = self.winfo_reqheight()
+            position_right = int(self.winfo_screenwidth() / 2 - window_width / 2)
+            position_down = int(self.winfo_screenheight() / 2 - window_height / 2)
+
+            self.geometry("+{}+{}".format(position_right, position_down))
+
+        def apply(self):
+            err = float(self.e1.get())  # convert to float
+            is_relative = self.e2.get().lower() == 'true'  # convert to boolean
+            min_abs_err = float(self.e3.get()) if self.e3.get().strip() else None
+            max_abs_err = float(self.e4.get()) if self.e4.get().strip() else None
+
+            self.result = [err, is_relative, min_abs_err, max_abs_err]
+        
     def clearPicks(self):
 
         if self.sts:
@@ -2065,7 +2263,6 @@ E-mail: vjs279@hotmail.com
                                 break
                     # Get the index positions of 's', 'g', and 't', starting from the second character
                     words = lines[sgtindx][1:].split()
-                    print(words)
                     s_index = words.index('s')
                     g_index = words.index('g')
                     t_index = words.index('t')

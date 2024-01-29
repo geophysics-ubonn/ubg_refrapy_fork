@@ -2,6 +2,7 @@
 
 ## Changes in SP Fork (Jan 2024)
 - read segy and su file with headers
+- read su file containing multiple shots
 - get positions from headers, allowing unevenly spaced traces
 - zoomed inset when picking to improve precision
 - "remove pick" option with the middle button of the mouse
@@ -11,6 +12,8 @@
 - add error (defined either relative or absolute) to sgt file
 - less pop up messages to improve productivity
 - and some other bug corrections
+
+**New dependency :** tqdm
 
 ## Summary
 
@@ -37,6 +40,7 @@ All main dependencies are listed below:
    numpy=1.19.5
    scipy=1.8.0
    matplotlib=3.5.1
+   tqdm
    ```
 
 It is recommended the use of Anaconda (https://www.anaconda.com/), because it simplifies package management.
