@@ -377,7 +377,8 @@ class Refrapick(Tk):
                 
                 self.yLimSet()
 
-                messagebox.showinfo(title="Refrapick", message="The maximum time has been changed")
+                # messagebox.showinfo(title="Refrapick", message="The maximum time has been changed")
+                print("Refrapick: The maximum time has been changed")
                 plotOptionsWindow.tkraise()
 
         def editTraceColor():
@@ -834,7 +835,7 @@ class Refrapick(Tk):
     
     def createProject(self):
 
-        self.projPath = filedialog.askdirectory()
+        self.projPath = filedialog.askdirectory(initialdir=path.expanduser('~/Documents'))
         
         if self.projPath:
             
@@ -863,7 +864,7 @@ class Refrapick(Tk):
 
     def loadProject(self):
 
-        self.projPath = filedialog.askdirectory()
+        self.projPath = filedialog.askdirectory(initialdir=path.expanduser('~/Documents'))
         
         if self.projPath:
             
@@ -889,9 +890,9 @@ class Refrapick(Tk):
             if self.pickMode: self.pick()
             if self.velMode: self.appVelMode()
             
-            files = filedialog.askopenfilenames(title='Open', initialdir = self.projPath+"/data/", filetypes=[('SU file', '*.su'),
-                                                                                                              ('SEG2 file', '*.dat'),
-                                                                                                            ('SEGY file', '*.sgy')
+            files = filedialog.askopenfilenames(title='Open', initialdir = self.projPath+"/data/", filetypes=[('SEGY file', ('*.sgy', '*.segy')),
+                                                                                                              ('SEG2 file', ('*.sg2', '*.dat')),
+                                                                                                            ('SU file', '*.su')
                                                                                                             ])
 
             if files:
@@ -994,7 +995,7 @@ class Refrapick(Tk):
                     ax.set_facecolor(self.backgroundColor)
 
                     # Create an initial inset axes for the zoom window
-                    axin = ax.inset_axes([0.5-0.75/2, -0.075, 0.75, 0.6])
+                    axin = ax.inset_axes([0.5-0.45/2, -0.05, 0.45, 0.4])
                     # Set the color of the axes, ticks, and tick labels to blue
                     axin.spines['bottom'].set_color('blue')
                     axin.spines['top'].set_color('blue') 
@@ -1888,7 +1889,7 @@ E-mail: vjs279@hotmail.com
                         if x not in self.xpicks[self.currentSt]: createPick([x],[event.ydata])
                         else: reworkPick([x],[event.ydata])
 
-                def click3(event):
+                def click2(event):
 
                     if event.button == 2:
 
@@ -1896,7 +1897,7 @@ E-mail: vjs279@hotmail.com
 
                         if x in self.xpicks[self.currentSt]: removePick([x],[event.ydata])
 
-                def click2(event):
+                def click3(event):
 
                     if event.button == 3:
 
