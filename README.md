@@ -51,6 +51,7 @@ Once it is installed, run the following commands on the Anaconda prompt (**teste
    conda activate refrapy
    conda install obspy
    conda install -c gimli -c conda-forge pygimli
+   conda install tqdm
    pip install pmw
    ```
     
