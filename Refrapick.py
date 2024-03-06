@@ -29,7 +29,7 @@ class Refrapick(Tk):
         self.geometry("1600x900")
         self.title('Refrapy - Refrapick v2.1.0 - SP fork')
         self.configure(bg = "#F0F0F0")
-        self.resizable(0,0)
+        # self.resizable(0,0)
 
         frame_toolbar = Frame(self)
         frame_toolbar.grid(row=0,column=0,sticky="WE")
@@ -2277,7 +2277,7 @@ E-mail: vjs279@hotmail.com
                     if 'err' in words:
                         err = [float(i.split()[err_index]) for i in lines[sgtindx+1:]]
                     else:
-                        err = t*0                          
+                        err = [0 for _ in range(len(t))]              
                     sx = [sgx[i-1] for i in s]
                     gx = [sgx[i-1] for i in g]
                     loaded = False
