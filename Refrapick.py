@@ -6,6 +6,7 @@
 # #E-mail: vjs279@hotmail.com
 import warnings
 from os import path, makedirs, getcwd
+import os
 
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
@@ -896,10 +897,16 @@ class Refrapick(Tk):
             if self.pickMode: self.pick()
             if self.velMode: self.appVelMode()
 
-            files = filedialog.askopenfilenames(title='Open', initialdir = self.projPath+"/data/", filetypes=[('SEGY file', ('*.sgy', '*.segy')),
-                                                                                                              ('SEG2 file', ('*.sg2', '*.dat')),
-                                                                                                            ('SU file', '*.su')
-                                                                                                            ])
+            files = filedialog.askopenfilenames(
+                title='Open',
+                # initialdir=self.projPath + "/data/",
+                initialdir=os.getcwd(),
+                filetypes=[
+                    ('SEGY file', ('*.sgy', '*.segy')),
+                    ('SEG2 file', ('*.sg2', '*.dat')),
+                    ('SU file', '*.su')
+                ]
+            )
 
             if files:
 
