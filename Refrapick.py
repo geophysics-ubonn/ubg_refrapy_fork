@@ -1,22 +1,27 @@
-##Refrapy - Seismic Refraction Data Analysis
-##Refrapick - First-break picking
-##Author: Victor Guedes, MSc
-##E-mail: vjs279@hotmail.com
+#!/usr/bin/env python
+
+# #Refrapy - Seismic Refraction Data Analysis
+# #Refrapick - First-break picking
+# #Author: Victor Guedes, MSc
+# #E-mail: vjs279@hotmail.com
+import warnings
+from os import path, makedirs, getcwd
 
 from matplotlib import pyplot as plt
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from matplotlib.backends.backend_tkagg import NavigationToolbar2Tk
 from matplotlib.colors import is_color_like
 from matplotlib import lines, markers
-from mpl_toolkits.axes_grid1.inset_locator import inset_axes
-from tkinter import Tk, Toplevel, Frame, Button, Label, filedialog, messagebox, PhotoImage, simpledialog, Entry
-from os import path, makedirs, getcwd
+# from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+
+from tkinter import Tk, Toplevel, Frame, Button, Label, filedialog
+from tkinter import messagebox, PhotoImage, simpledialog, Entry
 from obspy import read
 from obspy.signal.filter import lowpass, highpass
 from scipy.signal import resample
 from scipy.interpolate import interp1d
 from numpy import array, where, polyfit, isclose, unique
 from Pmw import initialise, Balloon
-import warnings
 from tqdm import tqdm
 
 warnings.filterwarnings('ignore')
