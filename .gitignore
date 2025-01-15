@@ -1,3 +1,7 @@
+src/ubg_refrapy_fork.egg-info/
+dist/
+build/
+
 line5/data/5_1_511_721_1_updated.su
 line5/data/5_2_521_722_1_updated.su
 line5/data/5_3_531_723_1_updated.su
