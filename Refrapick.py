@@ -933,15 +933,47 @@ class Refrapick(Tk):
                         st = read(file)
 
                     if st[0].stats._format == "SEG2":
+                        # different vendors fill out the header differently
+                        if st.stats['seg2']['INSTRUMENT'] == 'DMT_SUMMIT':
+                         # raw_rec_loc_0 = st[0].stats.seg2['RECEIVER_LOCATION'].split(' ')
+                         # raw_rec_loc_1 = st[1].stats.seg2['RECEIVER_LOCATION'].split(' ')
+                         # dx = float(raw_rec_loc_1[0]) - float(raw_rec_loc_1[0])
+                             # st[1].stats.seg2['RECEIVER_LOCATION']
+                         # ) - float(st[0].stats.seg2['RECEIVER_LOCATION'])
+                         dx = 3
 
-                        dx = float(st[1].stats.seg2['RECEIVER_LOCATION'])-float(st[0].stats.seg2['RECEIVER_LOCATION'])
-                        delay = float(st[0].stats.seg2['DELAY'])
-                        source = float(st[0].stats.seg2['SOURCE_LOCATION'])
-                        x1 = float(st[0].stats.seg2['RECEIVER_LOCATION'])
-                        xend = float(st[-1].stats.seg2['RECEIVER_LOCATION'])
-                        xall = []
-                        for trace in st:
-                            xall.append(float(trace.stats.seg2['RECEIVER_LOCATION']))
+                         delay = float(st[0].stats.seg2['DELAY'])
+                         source = float(
+                            st[0].stats.seg2['SOURCE_STATION_NUMBER']
+                         )
+                         x1 = float(st[0].stats.seg2['RECEIVER_STATION_NUMBER'])
+                         xend = float(st[-1].stats.seg2['RECEIVER_STATION_NUMBER'])
+                         xall = []
+                         for trace in st:
+                            xall.append(
+                                float(
+                                    trace.stats.seg2['RECEIVER_STATION_NUMBER']
+                                )
+                            )
+                        else:
+                            dx = float(
+                                st[1].stats.seg2['RECEIVER_LOCATION']
+                            ) - float(
+                                st[0].stats.seg2['RECEIVER_LOCATION']
+                            )
+                            delay = float(st[0].stats.seg2['DELAY'])
+                            source = float(st[0].stats.seg2['SOURCE_LOCATION'])
+                            x1 = float(st[0].stats.seg2['RECEIVER_LOCATION'])
+                            xend = float(
+                                st[-1].stats.seg2['RECEIVER_LOCATION']
+                            )
+                            xall = []
+                            for trace in st:
+                                xall.append(
+                                    float(
+                                        trace.stats.seg2['RECEIVER_LOCATION']
+                                    )
+                                )
 
                     elif st[0].stats._format == "SU":
                         xsca = abs(float(st[0].stats.su['trace_header']['scalar_to_be_applied_to_all_coordinates']))
@@ -1058,7 +1090,21 @@ class Refrapick(Tk):
                         self.originalTracesData[i+n].append(tr.data)
                         self.originalTracesTimes[i+n].append(tr.times()+self.delay,)
 
-                        if st[0].stats._format == "SEG2": self.receiverPositions[i+n].append(float(tr.stats.seg2['RECEIVER_LOCATION']))
+                        if st[0].stats._format == "SEG2":
+                            if st.stats['seg2']['INSTRUMENT'] == 'DMT_SUMMIT':
+                                self.receiverPositions[i+n].append(
+                                    float(
+                                        tr.stats.seg2[
+                                            'RECEIVER_STATION_NUMBER'
+                                        ]
+                                    )
+                                )
+                            else:
+                                self.receiverPositions[i+n].append(
+                                    float(
+                                        tr.stats.seg2['RECEIVER_LOCATION']
+                                    )
+                                )
                         else: self.receiverPositions[i+n].append(xall[j])
 
                         t.get_xdata()[t.get_xdata() < xall[j]-((dx/2)*0.9)] = xall[j]-((dx/2)*0.9)
