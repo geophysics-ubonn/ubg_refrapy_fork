@@ -2310,15 +2310,15 @@ E-mail: vjs279@hotmail.com
                     messagebox.showinfo(title="Refrapick", message="All picks in %s have been deleted!"%self.stNames[self.currentSt])
 
     def loadPicks(self):
-
         if self.sts:
-
-            pickFile = filedialog.askopenfilename(title='Open', initialdir = self.projPath+"/picks/", filetypes=[('Pick file', '*.sgt')])
+            pickFile = filedialog.askopenfilename(
+                title='Open',
+                initialdir=self.projPath+"/picks/",
+                filetypes=[('Pick file', '*.sgt')]
+            )
 
             if pickFile:
-
                 with open(pickFile, "r") as file:
-
                     lines = file.readlines()
                     npoints = int(lines[0].split()[0])
                     sgx = [float(i.split()[0]) for i in lines[2:2+npoints]]
@@ -2336,6 +2336,7 @@ E-mail: vjs279@hotmail.com
                                 # Store the index and break the loop
                                 sgtindx = i
                                 break
+
                     # Get the index positions of 's', 'g', and 't', starting from the second character
                     words = lines[sgtindx][1:].split()
                     s_index = words.index('s')
@@ -2349,7 +2350,11 @@ E-mail: vjs279@hotmail.com
                     g = [int(i.split()[g_index]) for i in lines[sgtindx+1:]]
                     t = [float(i.split()[t_index]) for i in lines[sgtindx+1:]]
                     if 'err' in words:
-                        err = [float(i.split()[err_index]) for i in lines[sgtindx+1:]]
+                        err = [
+                            float(
+                                i.split()[err_index]
+                            ) for i in lines[sgtindx+1:]
+                        ]
                     else:
                         err = [0 for _ in range(len(t))]
                     sx = [sgx[i-1] for i in s]
@@ -2357,14 +2362,24 @@ E-mail: vjs279@hotmail.com
                     loaded = False
 
                     for i in range(len(self.sts)):
-
                         for j in range(len(sx)):
-
-                            if self.sources[i] == sx[j] and gx[j] in self.receiverPositions[i]:
-
-                                pickline = self.axs[i].scatter(gx[j], t[j], marker = self.pickMarker, s = self.pickSize*self.dxs[self.currentSt], color=self.pickColor)
+                            if self.sources[i] == sx[j] and gx[
+                                    j] in self.receiverPositions[i]:
+                                pickline = self.axs[i].scatter(
+                                    gx[j],
+                                    t[j],
+                                    marker=self.pickMarker,
+                                    s=self.pickSize*self.dxs[self.currentSt],
+                                    color=self.pickColor
+                                )
                                 self.picksArts[i].append(pickline)
-                                pickline_inset = self.axins[i].scatter(gx[j], t[j], marker = self.pickMarker, s = self.pickSize*self.dxs[self.currentSt], color=self.pickColor)
+                                pickline_inset = self.axins[i].scatter(
+                                    gx[j],
+                                    t[j],
+                                    marker=self.pickMarker,
+                                    s=self.pickSize*self.dxs[self.currentSt],
+                                    color=self.pickColor
+                                )
                                 self.picksArtsIn[i].append(pickline_inset)
                                 self.xpicks[i].append(gx[j])
                                 self.tpicks[i].append(t[j])
