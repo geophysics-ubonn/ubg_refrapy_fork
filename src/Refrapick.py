@@ -5,8 +5,11 @@
 # #Author: Victor Guedes, MSc
 # #E-mail: vjs279@hotmail.com
 import warnings
-from os import path, makedirs, getcwd
+from os import path, makedirs
 import os
+import pathlib
+
+import importlib_resources
 
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
