@@ -55,6 +55,6 @@ if __name__ == '__main__':
             'obspy',
             'numpy',
             'tqdm',
-            'Pwm',
+            'Pmw',
         ],
     )
