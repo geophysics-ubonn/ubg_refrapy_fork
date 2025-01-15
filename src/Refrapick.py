@@ -24,13 +24,21 @@ from obspy import read
 from obspy.signal.filter import lowpass, highpass
 from scipy.signal import resample
 from scipy.interpolate import interp1d
-from numpy import array, where, polyfit, isclose, unique
+from numpy import array, polyfit, isclose, unique
 from Pmw import initialise, Balloon
 from tqdm import tqdm
 
 warnings.filterwarnings('ignore')
 
+
 class Refrapick(Tk):
+
+    def _get_image(self, filename):
+        """Return the full path to a given icon filename"""
+        full_path = importlib_resources.files('refrapy')
+        full_path /= pathlib.Path('images/')
+        full_path /= pathlib.Path(filename)
+        return str(full_path)
 
     def __init__(self):
 
@@ -38,53 +46,57 @@ class Refrapick(Tk):
         self.geometry("1600x900")
         self.title_base = 'Refrapy  - ubg_refrapick_fork -'
         self.title(self.title_base)
-        self.configure(bg = "#F0F0F0")
+        self.configure(bg="#F0F0F0")
         # self.resizable(0,0)
 
         frame_toolbar = Frame(self)
-        frame_toolbar.grid(row=0,column=0,sticky="WE")
+        frame_toolbar.grid(row=0, column=0, sticky="WE")
 
         # self.iconbitmap("%s/images/ico_refrapy.ico"%getcwd())
-        photo = PhotoImage(file="%s/images/ico_refrapy.gif"%getcwd())
-        labelPhoto = Label(frame_toolbar, image = photo, width = 151)
+        photo = PhotoImage(file=self._get_image('ico_refrapy.gif'))
+        labelPhoto = Label(frame_toolbar, image=photo, width=151)
         labelPhoto.image = photo
-        labelPhoto.grid(row=0, column =0, sticky="W")
-        self.statusLabel = Label(frame_toolbar, text = "Create or load a project to start", font=("Arial", 11))
-        self.statusLabel.grid(row = 0, column = 34, sticky = "W")
+        labelPhoto.grid(row=0, column=0, sticky="W")
+        self.statusLabel = Label(
+            frame_toolbar,
+            text="Create or load a project to start",
+            font=("Arial", 11)
+        )
+        self.statusLabel.grid(row=0, column=34, sticky="W")
         initialise(self)
-        self.ico_openWaveform = PhotoImage(file="%s/images/abrir.gif"%getcwd())
-        self.ico_savePicks = PhotoImage(file="%s/images/salvar.gif"%getcwd())
-        self.ico_nextWf = PhotoImage(file="%s/images/proximo.gif"%getcwd())
-        self.ico_previousWf = PhotoImage(file="%s/images/voltar.gif"%getcwd())
-        self.ico_expandY = PhotoImage(file="%s/images/baixo.gif"%getcwd())
-        self.ico_zoomY = PhotoImage(file="%s/images/cima.gif"%getcwd())
-        self.ico_moreGain = PhotoImage(file="%s/images/mais.gif"%getcwd())
-        self.ico_lessGain = PhotoImage(file="%s/images/menos.gif"%getcwd())
-        self.ico_invertY = PhotoImage(file="%s/images/invert.gif"%getcwd())
-        self.ico_trim = PhotoImage(file="%s/images/cortar.gif"%getcwd())
-        self.ico_wiggles = PhotoImage(file="%s/images/fill_null.gif"%getcwd())
-        self.ico_fillNeg = PhotoImage(file="%s/images/fill_neg.gif"%getcwd())
-        self.ico_fillPos = PhotoImage(file="%s/images/fill_pos.gif"%getcwd())
-        self.ico_clip = PhotoImage(file="%s/images/clip.gif"%getcwd())
-        self.ico_filters = PhotoImage(file="%s/images/ico_filter.gif"%getcwd())
-        self.ico_pick = PhotoImage(file="%s/images/pick.gif"%getcwd())
-        self.ico_connectPick = PhotoImage(file="%s/images/ligar.gif"%getcwd())
-        self.ico_clearPicks = PhotoImage(file="%s/images/limpar.gif"%getcwd())
-        self.ico_velMode = PhotoImage(file="%s/images/vel.gif"%getcwd())
-        self.ico_tt = PhotoImage(file="%s/images/grafico.gif"%getcwd())
-        self.ico_options = PhotoImage(file="%s/images/opt.gif"%getcwd())
-        self.ico_reset = PhotoImage(file="%s/images/fechar.gif"%getcwd())
-        self.ico_newProject = PhotoImage(file="%s/images/ico_newProject.gif"%getcwd())
-        self.ico_loadProject = PhotoImage(file="%s/images/ico_loadProject.gif"%getcwd())
-        self.ico_resample = PhotoImage(file="%s/images/ico_resample.gif"%getcwd())
-        self.ico_survey = PhotoImage(file="%s/images/ico_survey.gif"%getcwd())
-        self.ico_shotTime = PhotoImage(file="%s/images/ico_shotTime.gif"%getcwd())
-        self.ico_loadPicks = PhotoImage(file="%s/images/ico_loadPicks.gif"%getcwd())
-        self.ico_allPicks = PhotoImage(file="%s/images/ico_allPicks.gif"%getcwd())
-        self.ico_restoreTraces = PhotoImage(file="%s/images/ico_restoreTraces.gif"%getcwd())
-        self.ico_help = PhotoImage(file="%s/images/ico_help.gif"%getcwd())
-        self.ico_plotOptions = PhotoImage(file="%s/images/ico_plotOptions.gif"%getcwd())
-        self.ico_errorOptions = PhotoImage(file="%s/images/ico_error.png"%getcwd())
+        self.ico_openWaveform = PhotoImage(file=self._get_image('abrir.gif'))
+        self.ico_savePicks = PhotoImage(file=self._get_image('salvar.gif'))
+        self.ico_nextWf = PhotoImage(file=self._get_image('proximo.gif'))
+        self.ico_previousWf = PhotoImage(file=self._get_image('voltar.gif'))
+        self.ico_expandY = PhotoImage(file=self._get_image('baixo.gif'))
+        self.ico_zoomY = PhotoImage(file=self._get_image('cima.gif'))
+        self.ico_moreGain = PhotoImage(file=self._get_image('mais.gif'))
+        self.ico_lessGain = PhotoImage(file=self._get_image('menos.gif'))
+        self.ico_invertY = PhotoImage(file=self._get_image('invert.gif'))
+        self.ico_trim = PhotoImage(file=self._get_image('cortar.gif'))
+        self.ico_wiggles = PhotoImage(file=self._get_image('fill_null.gif'))
+        self.ico_fillNeg = PhotoImage(file=self._get_image('fill_neg.gif'))
+        self.ico_fillPos = PhotoImage(file=self._get_image('fill_pos.gif'))
+        self.ico_clip = PhotoImage(file=self._get_image('clip.gif'))
+        self.ico_filters = PhotoImage(file=self._get_image('ico_filter.gif'))
+        self.ico_pick = PhotoImage(file=self._get_image('pick.gif'))
+        self.ico_connectPick = PhotoImage(file=self._get_image('ligar.gif'))
+        self.ico_clearPicks = PhotoImage(file=self._get_image('limpar.gif'))
+        self.ico_velMode = PhotoImage(file=self._get_image('vel.gif'))
+        self.ico_tt = PhotoImage(file=self._get_image('grafico.gif'))
+        self.ico_options = PhotoImage(file=self._get_image('opt.gif'))
+        self.ico_reset = PhotoImage(file=self._get_image('fechar.gif'))
+        self.ico_newProject = PhotoImage(file=self._get_image('ico_newProject.gif'))
+        self.ico_loadProject = PhotoImage(file=self._get_image('ico_loadProject.gif'))
+        self.ico_resample = PhotoImage(file=self._get_image('ico_resample.gif'))
+        self.ico_survey = PhotoImage(file=self._get_image('ico_survey.gif'))
+        self.ico_shotTime = PhotoImage(file=self._get_image('ico_shotTime.gif'))
+        self.ico_loadPicks = PhotoImage(file=self._get_image('ico_loadPicks.gif'))
+        self.ico_allPicks = PhotoImage(file=self._get_image('ico_allPicks.gif'))
+        self.ico_restoreTraces = PhotoImage(file=self._get_image('ico_restoreTraces.gif'))
+        self.ico_help = PhotoImage(file=self._get_image('ico_help.gif'))
+        self.ico_plotOptions = PhotoImage(file=self._get_image('ico_plotOptions.gif'))
+        self.ico_errorOptions = PhotoImage(file=self._get_image('ico_error.png'))
 
         bt = Button(frame_toolbar,image = self.ico_newProject,command = self.createProject,width=25)
         bt.grid(row = 0, column = 1, sticky="W")
