@@ -32,7 +32,8 @@ class Refrapick(Tk):
 
         super().__init__()
         self.geometry("1600x900")
-        self.title('Refrapy - Refrapick v2.1.0 - SP fork')
+        self.title_base = 'Refrapy  - ubg_refrapick_fork -'
+        self.title(self.title_base)
         self.configure(bg = "#F0F0F0")
         # self.resizable(0,0)
 
