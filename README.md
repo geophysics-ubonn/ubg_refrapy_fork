@@ -1,6 +1,16 @@
+# University of Bonn, Section Geophysics, fork of Refrapy
+
+This is just our fork of [Refrapy](https://github.com/viictorjs/Refrapy.git) by
+viictorjs (Victor Guedes).
+
+We build upon the forks of github user
+[spasquet](https://github.com/spasquet/Refrapy) and
+[GGDRiedel](https://github.com/GGDRriedel/Refrapy.git).
+
+
 ![alt text](https://github.com/viictorjs/Refrapy/blob/master/refrapy_logo.png)
 
-## Changes in SP Fork (Jan 2024)
+## Changes by user spasquet in SP Fork (Jan 2024)
 - read segy and su file with headers
 - read su file containing multiple shots
 - get positions from headers, allowing unevenly spaced traces
@@ -29,7 +39,8 @@
 
 ## Introduction
 
-Refrapy is a Python software package with a graphical interface for seismic refraction data analysis.
+Refrapy is a Python software package with a graphical interface for seismic
+refraction data analysis.
 
 It is based on two modules: Refrapick and Refrainv.
 
@@ -54,7 +65,7 @@ Once it is installed, run the following commands on the Anaconda prompt (**teste
    conda install tqdm
    pip install pmw
    ```
-    
+
 Once all the necessary packages are installed, extract Refrapick.py, Refrainv.py and the images folder to a directory on your computer. Sample data are also available for download.
 
 You can execute the Python files by running:
@@ -74,7 +85,7 @@ The Refrapick program is used for basic waveform processing and for first breaks
 
 ## Refrainv
 
-The Refrainv program is used to run a time-terms and a traveltimes tomography inversion. The latter is powered by pyGIMLi (https://www.pygimli.org/). The program presents an individual frame for each inversion method, where each frame has three main panels: the traveltime plotting panel (upper left), used to view and interact with the observed data; the fit and editing panel (upper right), used to edit traveltimes, by clicking on data points and dragging them up or down, and to view the graphical fit between the observed and calculated traveltimes; and the velocity model plotting panel (bottom). 
+The Refrainv program is used to run a time-terms and a traveltimes tomography inversion. The latter is powered by pyGIMLi (https://www.pygimli.org/). The program presents an individual frame for each inversion method, where each frame has three main panels: the traveltime plotting panel (upper left), used to view and interact with the observed data; the fit and editing panel (upper right), used to edit traveltimes, by clicking on data points and dragging them up or down, and to view the graphical fit between the observed and calculated traveltimes; and the velocity model plotting panel (bottom).
 
 ### Video tutorial - Calculate velocity models from data inversion
 [![IMAGE ALT TEXT HERE](https://img.youtube.com/vi/rOJjxoc2cbU/0.jpg)](https://www.youtube.com/watch?v=rOJjxoc2cbU)
