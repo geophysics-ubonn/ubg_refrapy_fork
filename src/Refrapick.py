@@ -2559,5 +2559,7 @@ E-mail: vjs279@hotmail.com
                 # messagebox.showinfo(title="Refrapick", message="Apparent velocity mode disabled!")
                 print("Refrapick: Apparent velocity mode disabled!")
 
-app = Refrapick()
-app.mainloop()
+
+def main():
+    app = Refrapick()
+    app.mainloop()
